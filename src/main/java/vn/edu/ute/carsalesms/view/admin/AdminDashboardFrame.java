@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -68,8 +69,15 @@ public class AdminDashboardFrame extends JFrame {
 
     private final CardLayout contentCardLayout = new CardLayout();
     private final JPanel contentCards = new JPanel(contentCardLayout);
+    private final Runnable onLogoutRequested;
 
     public AdminDashboardFrame() {
+        this(() -> {
+        });
+    }
+
+    public AdminDashboardFrame(Runnable onLogoutRequested) {
+        this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
         setTitle("Car Sales Management - Admin Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(AdminUiSizing.WINDOW_MIN_SIZE);
@@ -83,8 +91,7 @@ public class AdminDashboardFrame extends JFrame {
                 "Car Sales Admin", "ADMIN",
                 ADMIN_SIDEBAR_ITEMS, CARD_DASHBOARD,
                 this::switchContent,
-                () -> {
-                }
+                this.onLogoutRequested
         );
         root.add(sidebar, BorderLayout.WEST);
 

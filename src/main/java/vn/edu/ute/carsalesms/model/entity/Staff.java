@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Entity đại diện cho bảng staffs.
- * Lưu thông tin nhân viên và tài khoản đăng nhập nội bộ hệ thống.
+ * Lưu thông tin nghiệp vụ của nhân viên.
  */
 @Entity
 @Table(name = "staffs")
@@ -25,12 +25,6 @@ public class Staff {
 
     @Column(name = "full_name", nullable = false, length = 255)
     private String fullName;
-
-    @Column(nullable = false, unique = true, length = 100)
-    private String username;
-
-    @Column(nullable = false, length = 255)
-    private String password;
 
     @Column(unique = true, length = 100)
     private String email;
@@ -61,6 +55,13 @@ public class Staff {
     private LocalDateTime updatedAt;
 
     /**
+     * Quan hệ một - một:
+     * Mỗi nhân viên có tối đa một tài khoản đăng nhập.
+     */
+    @OneToOne(mappedBy = "staff", fetch = FetchType.LAZY)
+    private vn.edu.ute.carsalesms.model.entity.Account account;
+
+    /**
      * Quan hệ một - nhiều:
      * Một nhân viên có thể tạo nhiều đơn bán.
      */
@@ -84,12 +85,10 @@ public class Staff {
     public Staff() {
     }
 
-    public Staff(String staffCode, String fullName, String username, String password, String email,
+    public Staff(String staffCode, String fullName, String email,
                  String phone, StaffRole role, Branch branch, Status status) {
         this.staffCode = staffCode;
         this.fullName = fullName;
-        this.username = username;
-        this.password = password;
         this.email = email;
         this.phone = phone;
         this.role = role;
@@ -115,22 +114,6 @@ public class Staff {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public String getEmail() {
@@ -181,6 +164,14 @@ public class Staff {
         return updatedAt;
     }
 
+    public vn.edu.ute.carsalesms.model.entity.Account getAccount() {
+        return account;
+    }
+
+    public void setAccount(vn.edu.ute.carsalesms.model.entity.Account account) {
+        this.account = account;
+    }
+
     public List<SaleOrder> getSaleOrders() {
         return saleOrders;
     }
@@ -211,7 +202,6 @@ public class Staff {
                 "id=" + id +
                 ", staffCode='" + staffCode + '\'' +
                 ", fullName='" + fullName + '\'' +
-                ", username='" + username + '\'' +
                 ", role=" + role +
                 ", status=" + status +
                 '}';

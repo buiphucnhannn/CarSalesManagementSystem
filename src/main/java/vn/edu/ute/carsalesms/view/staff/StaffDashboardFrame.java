@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
@@ -58,8 +59,15 @@ public class StaffDashboardFrame extends JFrame {
 
     private final CardLayout contentCardLayout = new CardLayout();
     private final JPanel contentCards = new JPanel(contentCardLayout);
+    private final Runnable onLogoutRequested;
 
     public StaffDashboardFrame() {
+        this(() -> {
+        });
+    }
+
+    public StaffDashboardFrame(Runnable onLogoutRequested) {
+        this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
         setTitle("Car Sales Management - Staff Dashboard");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setMinimumSize(AdminUiSizing.WINDOW_MIN_SIZE);
@@ -73,8 +81,7 @@ public class StaffDashboardFrame extends JFrame {
                 "Sales Staff", "STAFF",
                 STAFF_SIDEBAR_ITEMS, CARD_OVERVIEW,
                 this::switchContent,
-                () -> {
-                }
+                this.onLogoutRequested
         );
         root.add(sidebar, BorderLayout.WEST);
 

@@ -1,10 +1,18 @@
 package vn.edu.ute.carsalesms;
 
-import java.util.Map;
-import java.util.function.Supplier;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import vn.edu.ute.carsalesms.controller.AuthController;
+import vn.edu.ute.carsalesms.dao.AccountDao;
+import vn.edu.ute.carsalesms.dao.impl.AccountDaoImpl;
+import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
+import vn.edu.ute.carsalesms.model.enums.StaffRole;
+import vn.edu.ute.carsalesms.service.AuthService;
+import vn.edu.ute.carsalesms.service.impl.AuthServiceImpl;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 import vn.edu.ute.carsalesms.view.admin.AdminDashboardFrame;
+import vn.edu.ute.carsalesms.view.auth.LoginFrame;
 import vn.edu.ute.carsalesms.view.staff.StaffDashboardFrame;
 import vn.edu.ute.carsalesms.view.theme.LookAndFeelConfig;
 
@@ -13,41 +21,60 @@ import vn.edu.ute.carsalesms.view.theme.LookAndFeelConfig;
  */
 public class AppLauncher {
 
-    private static final String ROLE_STAFF = "STAFF";
-    private static final String ROLE_ADMIN = "ADMIN";
-    private static final Map<String, Supplier<JFrame>> DASHBOARD_FACTORIES = Map.of(
-            ROLE_STAFF, StaffDashboardFrame::new,
-            ROLE_ADMIN, AdminDashboardFrame::new
-    );
-
     public static void main(String[] args) {
-        String role = parseRoleArg(args);
-        SwingUtilities.invokeLater(() -> startDashboardUi(role));
+        SwingUtilities.invokeLater(AppLauncher::startApplication);
     }
 
-    private static String parseRoleArg(String[] args) {
-        if (args == null || args.length == 0) {
-            return ROLE_ADMIN;
-        }
-        if (args[0] == null) {
-            return ROLE_ADMIN;
-        }
-
-        String normalizedRole = args[0].trim().toUpperCase();
-        if (ROLE_ADMIN.equals(normalizedRole) || ROLE_STAFF.equals(normalizedRole)) {
-            return normalizedRole;
-        }
-        return ROLE_ADMIN;
-    }
-
-    private static void startDashboardUi(String role) {
+    private static void startApplication() {
         try {
             LookAndFeelConfig.apply();
-            Supplier<JFrame> frameFactory = DASHBOARD_FACTORIES.getOrDefault(role, DASHBOARD_FACTORIES.get(ROLE_STAFF));
-            JFrame frame = frameFactory.get();
-            frame.setVisible(true);
+            AuthController authController = buildAuthController();
+            showLoginFrame(authController);
         } catch (Exception e) {
-            throw new IllegalStateException("Không thể khởi chạy dashboard", e);
+            throw new IllegalStateException("Không thể khởi chạy ứng dụng", e);
         }
+    }
+
+    private static AuthController buildAuthController() {
+        AccountDao accountDao = new AccountDaoImpl();
+        AuthService authService = new AuthServiceImpl(accountDao);
+        return new AuthController(authService);
+    }
+
+    private static void showLoginFrame(AuthController authController) {
+        LoginFrame loginFrame = new LoginFrame(authController, AppLauncher::openDashboardByRole);
+        loginFrame.setVisible(true);
+    }
+
+    private static void openDashboardByRole(AuthenticatedUser user) {
+        JFrame dashboard;
+        if (user.role() == StaffRole.ADMIN) {
+            JFrame[] frameRef = new JFrame[1];
+            frameRef[0] = new AdminDashboardFrame(() -> logoutAndBackToLogin(frameRef[0]));
+            dashboard = frameRef[0];
+        } else if (user.role() == StaffRole.STAFF) {
+            JFrame[] frameRef = new JFrame[1];
+            frameRef[0] = new StaffDashboardFrame(() -> logoutAndBackToLogin(frameRef[0]));
+            dashboard = frameRef[0];
+        } else {
+            CurrentSession.clear();
+            JOptionPane.showMessageDialog(
+                    null,
+                    "Vai trò không hợp lệ: " + user.role(),
+                    "Đăng nhập thất bại",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        dashboard.setTitle(dashboard.getTitle() + " - " + user.fullName());
+        dashboard.setVisible(true);
+    }
+
+    private static void logoutAndBackToLogin(JFrame dashboard) {
+        CurrentSession.clear();
+        dashboard.dispose();
+        AuthController authController = buildAuthController();
+        showLoginFrame(authController);
     }
 }
