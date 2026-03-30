@@ -12,6 +12,7 @@ import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +26,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
-import vn.edu.ute.carsalesms.view.theme.AdminUiPalette;
-import vn.edu.ute.carsalesms.view.theme.AdminUiSizing;
+import vn.edu.ute.carsalesms.view.theme.UiPalette;
+import vn.edu.ute.carsalesms.view.theme.UiSizing;
 
 /**
  * Sidebar trái dark chứa các module, hover effect, avatar/role header, nút Đăng xuất.
@@ -52,8 +53,8 @@ public class SidebarMenuPanel extends JPanel {
             throw new IllegalArgumentException("menuItems must not be empty");
         }
 
-        setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
-        setPreferredSize(AdminUiSizing.SIDEBAR_SIZE);
+        setBackground(UiPalette.SIDEBAR_BACKGROUND);
+        setPreferredSize(UiSizing.SIDEBAR_SIZE);
         setLayout(new BorderLayout());
 
         // ── Gradient header with avatar + role ──
@@ -63,8 +64,8 @@ public class SidebarMenuPanel extends JPanel {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0, 0, AdminUiPalette.GRADIENT_START,
-                        getWidth(), getHeight(), AdminUiPalette.GRADIENT_END);
+                GradientPaint gp = new GradientPaint(0, 0, UiPalette.GRADIENT_START,
+                        getWidth(), getHeight(), UiPalette.GRADIENT_END);
                 g2.setPaint(gp);
                 g2.fillRect(0, 0, getWidth(), getHeight());
                 g2.dispose();
@@ -74,7 +75,7 @@ public class SidebarMenuPanel extends JPanel {
         header.setBorder(BorderFactory.createEmptyBorder(14, 12, 14, 12));
 
         // Avatar circle
-        JLabel avatar = new JLabel(role.isEmpty() ? "A" : role.substring(0, 1), SwingConstants.CENTER) {
+        JLabel avatar = new JLabel(resolveAvatarText(title), SwingConstants.CENTER) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -106,7 +107,7 @@ public class SidebarMenuPanel extends JPanel {
         // ── Menu items (scrollable) ──
         JPanel menuContainer = new JPanel();
         menuContainer.setLayout(new BoxLayout(menuContainer, BoxLayout.Y_AXIS));
-        menuContainer.setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
+        menuContainer.setBackground(UiPalette.SIDEBAR_BACKGROUND);
         menuContainer.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
         for (MenuItem item : menuItems) {
@@ -122,20 +123,20 @@ public class SidebarMenuPanel extends JPanel {
         menuScroll.getVerticalScrollBar().setUnitIncrement(12);
         menuScroll.setOpaque(false);
         menuScroll.getViewport().setOpaque(false);
-        menuScroll.getViewport().setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
+        menuScroll.getViewport().setBackground(UiPalette.SIDEBAR_BACKGROUND);
 
         // ── Logout button ──
         JPanel footer = new JPanel(new BorderLayout());
-        footer.setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
+        footer.setBackground(UiPalette.SIDEBAR_BACKGROUND);
         footer.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, AdminUiPalette.SIDEBAR_SEPARATOR),
+                BorderFactory.createMatteBorder(1, 0, 0, 0, UiPalette.SIDEBAR_SEPARATOR),
                 BorderFactory.createEmptyBorder(6, 8, 8, 8)
         ));
 
         JButton logoutButton = new JButton("Đăng xuất");
         logoutButton.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        logoutButton.setForeground(AdminUiPalette.DANGER);
-        logoutButton.setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
+        logoutButton.setForeground(UiPalette.DANGER);
+        logoutButton.setBackground(UiPalette.SIDEBAR_BACKGROUND);
         logoutButton.setFocusPainted(false);
         logoutButton.setBorderPainted(false);
         logoutButton.setHorizontalAlignment(SwingConstants.CENTER);
@@ -143,12 +144,12 @@ public class SidebarMenuPanel extends JPanel {
         logoutButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                logoutButton.setBackground(AdminUiPalette.SIDEBAR_HOVER);
+                logoutButton.setBackground(UiPalette.SIDEBAR_HOVER);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                logoutButton.setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
+                logoutButton.setBackground(UiPalette.SIDEBAR_BACKGROUND);
             }
         });
         logoutButton.addActionListener(e -> onLogoutRequested.run());
@@ -158,36 +159,36 @@ public class SidebarMenuPanel extends JPanel {
         add(menuScroll, BorderLayout.CENTER);
         add(footer, BorderLayout.SOUTH);
 
-        currentKey = menuRows.containsKey(defaultKey) ? defaultKey : menuItems.get(0).key();
+        currentKey = menuRows.containsKey(defaultKey) ? defaultKey : menuItems.getFirst().key();
         setSelected(currentKey);
     }
 
     private JPanel createMenuRow(String label, String key, Consumer<String> onMenuSelected) {
         JPanel row = new JPanel(new BorderLayout());
-        row.setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
+        row.setBackground(UiPalette.SIDEBAR_BACKGROUND);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         row.setBorder(BorderFactory.createEmptyBorder(7, 10, 7, 10));
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         JLabel textLabel = new JLabel(label);
         textLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        textLabel.setForeground(AdminUiPalette.SIDEBAR_TEXT);
+        textLabel.setForeground(UiPalette.SIDEBAR_TEXT);
         row.add(textLabel, BorderLayout.CENTER);
 
         row.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 if (!key.equals(currentKey)) {
-                    row.setBackground(AdminUiPalette.SIDEBAR_HOVER);
-                    textLabel.setForeground(AdminUiPalette.SIDEBAR_TEXT_ACTIVE);
+                    row.setBackground(UiPalette.SIDEBAR_HOVER);
+                    textLabel.setForeground(UiPalette.SIDEBAR_TEXT_ACTIVE);
                 }
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
                 if (!key.equals(currentKey)) {
-                    row.setBackground(AdminUiPalette.SIDEBAR_BACKGROUND);
-                    textLabel.setForeground(AdminUiPalette.SIDEBAR_TEXT);
+                    row.setBackground(UiPalette.SIDEBAR_BACKGROUND);
+                    textLabel.setForeground(UiPalette.SIDEBAR_TEXT);
                 }
             }
 
@@ -205,12 +206,20 @@ public class SidebarMenuPanel extends JPanel {
         currentKey = selectedKey;
         menuRows.forEach((key, row) -> {
             boolean selected = key.equals(selectedKey);
-            row.setBackground(selected ? AdminUiPalette.SIDEBAR_ACTIVE : AdminUiPalette.SIDEBAR_BACKGROUND);
+            row.setBackground(selected ? UiPalette.SIDEBAR_ACTIVE : UiPalette.SIDEBAR_BACKGROUND);
             if (row.getComponentCount() > 0 && row.getComponent(0) instanceof JLabel label) {
-                label.setForeground(selected ? AdminUiPalette.SIDEBAR_TEXT_ACTIVE : AdminUiPalette.SIDEBAR_TEXT);
+                label.setForeground(selected ? UiPalette.SIDEBAR_TEXT_ACTIVE : UiPalette.SIDEBAR_TEXT);
                 label.setFont(new Font("Segoe UI" + (selected ? " Semibold" : ""), Font.PLAIN, 13));
             }
         });
+    }
+
+    private String resolveAvatarText(String title) {
+        return Arrays.stream(title.trim().split("\\s+"))
+                .filter(part -> !part.isBlank())
+                .map(part -> part.substring(0, 1).toUpperCase())
+                .findFirst()
+                .orElse("U");
     }
 
 }

@@ -39,28 +39,28 @@ public final class LookAndFeelConfig {
         UIManager.put("TableHeader.font", new Font("Segoe UI Semibold", Font.PLAIN, 13));
 
         // ── Colors ──────────────────────────────────────────
-        UIManager.put("Button.background", AdminUiPalette.PRIMARY);
+        UIManager.put("Button.background", UiPalette.PRIMARY);
         UIManager.put("Button.foreground", Color.WHITE);
-        UIManager.put("Button.hoverBackground", AdminUiPalette.PRIMARY_HOVER);
-        UIManager.put("Button.pressedBackground", AdminUiPalette.PRIMARY_HOVER);
-        UIManager.put("Button.default.hoverBackground", AdminUiPalette.SECONDARY);
+        UIManager.put("Button.hoverBackground", UiPalette.PRIMARY_HOVER);
+        UIManager.put("Button.pressedBackground", UiPalette.PRIMARY_HOVER);
+        UIManager.put("Button.default.hoverBackground", UiPalette.SECONDARY);
 
-        UIManager.put("Panel.background", AdminUiPalette.APP_BACKGROUND);
-        UIManager.put("TextField.background", AdminUiPalette.SURFACE_BACKGROUND);
-        UIManager.put("TextField.focusedBackground", AdminUiPalette.SURFACE_BACKGROUND);
+        UIManager.put("Panel.background", UiPalette.APP_BACKGROUND);
+        UIManager.put("TextField.background", UiPalette.SURFACE_BACKGROUND);
+        UIManager.put("TextField.focusedBackground", UiPalette.SURFACE_BACKGROUND);
 
-        UIManager.put("Table.background", AdminUiPalette.TABLE_BACKGROUND);
-        UIManager.put("Table.alternateRowColor", AdminUiPalette.SURFACE_ELEVATED);
-        UIManager.put("TableHeader.background", AdminUiPalette.PRIMARY_SOFT);
-        UIManager.put("TableHeader.foreground", AdminUiPalette.TEXT_PRIMARY);
-        UIManager.put("Table.gridColor", AdminUiPalette.BORDER_LIGHTER);
-        UIManager.put("Table.selectionBackground", AdminUiPalette.PRIMARY_SOFT);
-        UIManager.put("Table.selectionForeground", AdminUiPalette.TEXT_PRIMARY);
+        UIManager.put("Table.background", UiPalette.TABLE_BACKGROUND);
+        UIManager.put("Table.alternateRowColor", UiPalette.SURFACE_ELEVATED);
+        UIManager.put("TableHeader.background", UiPalette.PRIMARY_SOFT);
+        UIManager.put("TableHeader.foreground", UiPalette.TEXT_PRIMARY);
+        UIManager.put("Table.gridColor", UiPalette.BORDER_LIGHTER);
+        UIManager.put("Table.selectionBackground", UiPalette.PRIMARY_SOFT);
+        UIManager.put("Table.selectionForeground", UiPalette.TEXT_PRIMARY);
 
-        UIManager.put("ProgressBar.foreground", AdminUiPalette.PRIMARY);
-        UIManager.put("Component.focusColor", AdminUiPalette.PRIMARY_BORDER);
-        UIManager.put("Component.borderColor", AdminUiPalette.BORDER_SOFT);
-        UIManager.put("Component.focusedBorderColor", AdminUiPalette.PRIMARY);
+        UIManager.put("ProgressBar.foreground", UiPalette.PRIMARY);
+        UIManager.put("Component.focusColor", UiPalette.PRIMARY_BORDER);
+        UIManager.put("Component.borderColor", UiPalette.BORDER_SOFT);
+        UIManager.put("Component.focusedBorderColor", UiPalette.PRIMARY);
 
         UIManager.put("ScrollPane.border", null);
     }

@@ -2,7 +2,7 @@ package vn.edu.ute.carsalesms.view.auth;
 
 import vn.edu.ute.carsalesms.controller.AuthController;
 import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
-import vn.edu.ute.carsalesms.view.theme.AdminUiPalette;
+import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
@@ -27,16 +27,16 @@ public class LoginFrame extends JFrame {
     private JButton loginButton;
     private boolean passwordVisible = false;
 
-    /* ── Custom Colors (derived from AdminUiPalette for harmony) ── */
-    private static final Color BRAND_GRADIENT_START = AdminUiPalette.SIDEBAR_BACKGROUND;   // #0F172A
-    private static final Color BRAND_GRADIENT_END   = AdminUiPalette.GRADIENT_END;          // #375FEB
-    private static final Color FORM_BG              = AdminUiPalette.SURFACE_BACKGROUND;    // #FFFFFF
+    /* ── Custom Colors (derived from UiPalette for harmony) ── */
+    private static final Color BRAND_GRADIENT_START = UiPalette.SIDEBAR_BACKGROUND;   // #0F172A
+    private static final Color BRAND_GRADIENT_END   = UiPalette.GRADIENT_END;          // #375FEB
+    private static final Color FORM_BG              = UiPalette.SURFACE_BACKGROUND;    // #FFFFFF
     private static final Color INPUT_BG             = new Color(0xF8, 0xFA, 0xFC);          // Slate 50
-    private static final Color INPUT_BORDER         = AdminUiPalette.BORDER_SOFT;           // #E2E8F0
-    private static final Color INPUT_FOCUS_BORDER   = AdminUiPalette.PRIMARY;               // #375FEB
-    private static final Color BUTTON_GRADIENT_L    = AdminUiPalette.PRIMARY;               // #375FEB
-    private static final Color BUTTON_GRADIENT_R    = AdminUiPalette.SECONDARY;             // #607DF3
-    private static final Color PLACEHOLDER_COLOR    = AdminUiPalette.TEXT_MUTED;            // #94A3B8
+    private static final Color INPUT_BORDER         = UiPalette.BORDER_SOFT;           // #E2E8F0
+    private static final Color INPUT_FOCUS_BORDER   = UiPalette.PRIMARY;               // #375FEB
+    private static final Color BUTTON_GRADIENT_L    = UiPalette.PRIMARY;               // #375FEB
+    private static final Color BUTTON_GRADIENT_R    = UiPalette.SECONDARY;             // #607DF3
+    private static final Color PLACEHOLDER_COLOR    = UiPalette.TEXT_MUTED;            // #94A3B8
 
     public LoginFrame(AuthController authController, Consumer<AuthenticatedUser> onLoginSuccess) {
         this.authController = Objects.requireNonNull(authController, "authController is required");
@@ -127,8 +127,8 @@ public class LoginFrame extends JFrame {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0, 0, AdminUiPalette.SECONDARY,
-                        getWidth(), 0, AdminUiPalette.PRIMARY_BORDER);
+                GradientPaint gp = new GradientPaint(0, 0, UiPalette.SECONDARY,
+                        getWidth(), 0, UiPalette.PRIMARY_BORDER);
                 g2.setPaint(gp);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 4, 4);
                 g2.dispose();
@@ -175,14 +175,14 @@ public class LoginFrame extends JFrame {
         // Welcome text
         JLabel welcomeLabel = new JLabel("Chào mừng trở lại");
         welcomeLabel.setFont(new Font("Segoe UI", Font.BOLD, 26));
-        welcomeLabel.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        welcomeLabel.setForeground(UiPalette.TEXT_PRIMARY);
         welcomeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(welcomeLabel);
         form.add(Box.createVerticalStrut(6));
 
         JLabel subLabel = new JLabel("Đăng nhập vào tài khoản của bạn");
         subLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        subLabel.setForeground(AdminUiPalette.TEXT_SECONDARY);
+        subLabel.setForeground(UiPalette.TEXT_SECONDARY);
         subLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(subLabel);
         form.add(Box.createVerticalStrut(32));
@@ -217,7 +217,7 @@ public class LoginFrame extends JFrame {
         // Error label
         errorLabel = new JLabel(" ");
         errorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        errorLabel.setForeground(AdminUiPalette.DANGER);
+        errorLabel.setForeground(UiPalette.DANGER);
         errorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(errorLabel);
         form.add(Box.createVerticalStrut(8));
@@ -242,7 +242,7 @@ public class LoginFrame extends JFrame {
     private JLabel createFieldLabel(String text) {
         JLabel label = new JLabel(text);
         label.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 13));
-        label.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        label.setForeground(UiPalette.TEXT_PRIMARY);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         return label;
     }
@@ -269,13 +269,13 @@ public class LoginFrame extends JFrame {
                 int arc = 10;
 
                 // Background
-                g2.setColor(passwordVisible ? AdminUiPalette.PRIMARY_SOFT : INPUT_BG);
+                g2.setColor(passwordVisible ? UiPalette.PRIMARY_SOFT : INPUT_BG);
                 g2.fillRoundRect(0, 0, w, h, arc, arc);
                 g2.setColor(passwordVisible ? INPUT_FOCUS_BORDER : INPUT_BORDER);
                 g2.drawRoundRect(0, 0, w - 1, h - 1, arc, arc);
 
                 // Draw eye icon centered
-                Color iconColor = hovering ? AdminUiPalette.PRIMARY : AdminUiPalette.TEXT_SECONDARY;
+                Color iconColor = hovering ? UiPalette.PRIMARY : UiPalette.TEXT_SECONDARY;
                 g2.setColor(iconColor);
                 g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
@@ -366,8 +366,8 @@ public class LoginFrame extends JFrame {
     private void styleInput(JTextField field) {
         field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         field.setBackground(INPUT_BG);
-        field.setForeground(AdminUiPalette.TEXT_PRIMARY);
-        field.setCaretColor(AdminUiPalette.TEXT_PRIMARY);
+        field.setForeground(UiPalette.TEXT_PRIMARY);
+        field.setCaretColor(UiPalette.TEXT_PRIMARY);
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
         field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         field.setPreferredSize(new Dimension(0, 42));
@@ -448,7 +448,7 @@ public class LoginFrame extends JFrame {
                 int arc = 12;
 
                 // Background gradient — shifts with hover
-                Color left = blendColors(BUTTON_GRADIENT_L, AdminUiPalette.PRIMARY_HOVER, hoverProgress);
+                Color left = blendColors(BUTTON_GRADIENT_L, UiPalette.PRIMARY_HOVER, hoverProgress);
                 Color right = blendColors(BUTTON_GRADIENT_R, BUTTON_GRADIENT_L, hoverProgress);
                 GradientPaint gp = new GradientPaint(0, 0, left, w, 0, right);
                 g2.setPaint(gp);

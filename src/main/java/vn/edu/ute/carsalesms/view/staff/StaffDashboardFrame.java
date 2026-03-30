@@ -5,7 +5,11 @@ import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
@@ -15,10 +19,22 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
+import vn.edu.ute.carsalesms.controller.CarManagementController;
+import vn.edu.ute.carsalesms.dao.CarDao;
+import vn.edu.ute.carsalesms.dao.impl.CarDaoImpl;
+import vn.edu.ute.carsalesms.dao.impl.DashboardDaoImpl;
+import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
+import vn.edu.ute.carsalesms.model.dto.DashboardTaskItem;
+import vn.edu.ute.carsalesms.model.dto.StaffOverviewData;
+import vn.edu.ute.carsalesms.service.CarService;
+import vn.edu.ute.carsalesms.service.DashboardService;
+import vn.edu.ute.carsalesms.service.impl.CarServiceImpl;
+import vn.edu.ute.carsalesms.service.impl.DashboardServiceImpl;
+import vn.edu.ute.carsalesms.view.component.CarManagementPanel;
 import vn.edu.ute.carsalesms.view.component.SidebarMenuPanel;
 import vn.edu.ute.carsalesms.view.component.StatCardPanel;
-import vn.edu.ute.carsalesms.view.theme.AdminUiPalette;
-import vn.edu.ute.carsalesms.view.theme.AdminUiSizing;
+import vn.edu.ute.carsalesms.view.theme.UiPalette;
+import vn.edu.ute.carsalesms.view.theme.UiSizing;
 
 /**
  * Dashboard cho nhân viên bán hàng (STAFF).
@@ -60,25 +76,40 @@ public class StaffDashboardFrame extends JFrame {
     private final CardLayout contentCardLayout = new CardLayout();
     private final JPanel contentCards = new JPanel(contentCardLayout);
     private final Runnable onLogoutRequested;
+    private final StaffOverviewData overviewData;
+    private final CarManagementController carManagementController;
 
     public StaffDashboardFrame() {
-        this(() -> {
+        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), () -> {
         });
     }
 
     public StaffDashboardFrame(Runnable onLogoutRequested) {
+        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), onLogoutRequested);
+    }
+
+    public StaffDashboardFrame(AuthenticatedUser currentUser, Runnable onLogoutRequested) {
+        this(currentUser, buildDefaultDashboardService(), buildDefaultCarManagementController(), onLogoutRequested);
+    }
+
+    public StaffDashboardFrame(AuthenticatedUser currentUser,
+                               DashboardService dashboardService,
+                               CarManagementController carManagementController,
+                               Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
+        this.overviewData = loadOverviewData(dashboardService, currentUser);
+        this.carManagementController = Objects.requireNonNull(carManagementController, "carManagementController is required");
         setTitle("Car Sales Management - Staff Dashboard");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setMinimumSize(AdminUiSizing.WINDOW_MIN_SIZE);
-        setSize(AdminUiSizing.WINDOW_INITIAL_SIZE);
+        setMinimumSize(UiSizing.WINDOW_MIN_SIZE);
+        setSize(UiSizing.WINDOW_INITIAL_SIZE);
         setLocationRelativeTo(null);
 
         JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(AdminUiPalette.APP_BACKGROUND);
+        root.setBackground(UiPalette.APP_BACKGROUND);
 
         SidebarMenuPanel sidebar = new SidebarMenuPanel(
-                "Sales Staff", "STAFF",
+                resolveDisplayName(currentUser), resolveDisplayRole(currentUser),
                 STAFF_SIDEBAR_ITEMS, CARD_OVERVIEW,
                 this::switchContent,
                 this.onLogoutRequested
@@ -93,13 +124,50 @@ public class StaffDashboardFrame extends JFrame {
         root.add(mainArea, BorderLayout.CENTER);
         setContentPane(root);
     }
+
+    private static DashboardService buildDefaultDashboardService() {
+        return new DashboardServiceImpl(new DashboardDaoImpl());
+    }
+
+    private static CarManagementController buildDefaultCarManagementController() {
+        CarDao carDao = new CarDaoImpl();
+        CarService carService = new CarServiceImpl(carDao);
+        return new CarManagementController(carService);
+    }
+
+    private StaffOverviewData loadOverviewData(DashboardService dashboardService, AuthenticatedUser currentUser) {
+        if (dashboardService == null || currentUser == null || currentUser.staffId() == null) {
+            return StaffOverviewData.empty();
+        }
+        try {
+            return dashboardService.getStaffOverview(currentUser.staffId());
+        } catch (Exception ex) {
+            return StaffOverviewData.empty();
+        }
+    }
+
+    private String resolveDisplayName(AuthenticatedUser currentUser) {
+        if (currentUser == null || currentUser.fullName() == null || currentUser.fullName().isBlank()) {
+            return "Sales Staff";
+        }
+        return currentUser.fullName();
+    }
+
+    private String resolveDisplayRole(AuthenticatedUser currentUser) {
+        if (currentUser == null || currentUser.role() == null) {
+            return "STAFF";
+        }
+        return currentUser.role().name();
+    }
+
     private JPanel createContentCards() {
         contentCards.setOpaque(false);
         contentCards.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
 
         contentCards.add(createOverviewPanel(), CARD_OVERVIEW);
+        contentCards.add(createCarsPanel(), CARD_CARS);
         MODULE_ITEMS.stream()
-                .filter(item -> item.description() != null)
+                .filter(item -> item.description() != null && !CARD_CARS.equals(item.key()))
                 .forEach(item -> contentCards.add(
                         createPlaceholderPanel(item.title(), item.description()),
                         item.key()
@@ -113,14 +181,14 @@ public class StaffDashboardFrame extends JFrame {
     private JScrollPane createOverviewPanel() {
         JPanel overview = new JPanel(new BorderLayout(0, 8));
         overview.setOpaque(true);
-        overview.setBackground(AdminUiPalette.APP_BACKGROUND);
+        overview.setBackground(UiPalette.APP_BACKGROUND);
 
         JPanel statGrid = new JPanel(new GridLayout(1, 4, 8, 0));
         statGrid.setOpaque(false);
-        statGrid.add(new StatCardPanel("Đơn cần xử lý", "07", AdminUiPalette.WARNING));
-        statGrid.add(new StatCardPanel("Doanh thu hôm nay", "165 triệu", AdminUiPalette.KPI_BLUE));
-        statGrid.add(new StatCardPanel("Lịch lái thử", "04", AdminUiPalette.SECONDARY));
-        statGrid.add(new StatCardPanel("Bảo hành mở", "02", AdminUiPalette.DANGER));
+        statGrid.add(new StatCardPanel("Đơn cần xử lý", String.format("%02d", overviewData.pendingOrderCount()), UiPalette.WARNING));
+        statGrid.add(new StatCardPanel("Doanh thu hôm nay", formatCurrencyShort(overviewData.todayRevenue()), UiPalette.KPI_BLUE));
+        statGrid.add(new StatCardPanel("Lịch lái thử", String.format("%02d", overviewData.todayTestDriveCount()), UiPalette.SECONDARY));
+        statGrid.add(new StatCardPanel("Bảo hành mở", String.format("%02d", overviewData.activeWarrantyCount()), UiPalette.DANGER));
 
         // Bảng công việc rộng (CENTER), lịch trình gọn bên phải (EAST)
         JPanel body = new JPanel(new BorderLayout(8, 0));
@@ -136,7 +204,7 @@ public class StaffDashboardFrame extends JFrame {
 
         JScrollPane scrollPane = new JScrollPane(overview);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(AdminUiPalette.APP_BACKGROUND);
+        scrollPane.getViewport().setBackground(UiPalette.APP_BACKGROUND);
         return scrollPane;
     }
 
@@ -145,16 +213,21 @@ public class StaffDashboardFrame extends JFrame {
         card.setLayout(new BorderLayout(0, 8));
 
         JLabel title = new JLabel("Danh sách công việc hôm nay");
-        title.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        title.setForeground(UiPalette.TEXT_PRIMARY);
         title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 14));
 
         String[] columns = {"Tác vụ", "Khách", "Hạn", "Trạng thái"};
-        Object[][] data = {
-                {"Lập đơn bán", "Trần Minh K", "10:30", "Đang xử lý"},
-                {"Thu đợt 2", "Lê Thu H", "11:15", "Cần thu"},
-                {"Hẹn lái thử", "Phạm Gia B", "14:00", "Sắp đến"},
-                {"Bảo hành", "Nguyễn Văn A", "15:30", "Mới tạo"}
-        };
+        Object[][] data = overviewData.taskItems().stream()
+                .map(item -> new Object[]{
+                        item.action(),
+                        item.customerName(),
+                        toDisplayTime(item.dueAt()),
+                        toDisplayStatus(item.status())
+                })
+                .toArray(Object[][]::new);
+        if (data.length == 0) {
+            data = new Object[][]{{"Không có công việc", "-", "-", "-"}};
+        }
 
         JTable table = new JTable(new DefaultTableModel(data, columns) {
             @Override
@@ -164,15 +237,15 @@ public class StaffDashboardFrame extends JFrame {
         });
         table.setRowHeight(28);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        table.setBackground(AdminUiPalette.TABLE_BACKGROUND);
-        table.setGridColor(AdminUiPalette.BORDER_SOFT);
-        table.setSelectionBackground(AdminUiPalette.PRIMARY_SOFT);
-        table.setSelectionForeground(AdminUiPalette.TEXT_PRIMARY);
-        table.getTableHeader().setBackground(AdminUiPalette.PRIMARY_SOFT);
-        table.getTableHeader().setForeground(AdminUiPalette.TEXT_PRIMARY);
+        table.setBackground(UiPalette.TABLE_BACKGROUND);
+        table.setGridColor(UiPalette.BORDER_SOFT);
+        table.setSelectionBackground(UiPalette.PRIMARY_SOFT);
+        table.setSelectionForeground(UiPalette.TEXT_PRIMARY);
+        table.getTableHeader().setBackground(UiPalette.PRIMARY_SOFT);
+        table.getTableHeader().setForeground(UiPalette.TEXT_PRIMARY);
 
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createLineBorder(AdminUiPalette.BORDER_SOFT));
+        scrollPane.setBorder(BorderFactory.createLineBorder(UiPalette.BORDER_SOFT));
 
         card.add(title, BorderLayout.NORTH);
         card.add(scrollPane, BorderLayout.CENTER);
@@ -188,13 +261,18 @@ public class StaffDashboardFrame extends JFrame {
 
         JLabel header = new JLabel("Lịch trình hôm nay");
         header.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 13));
-        header.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        header.setForeground(UiPalette.TEXT_PRIMARY);
         inner.add(header);
 
-        inner.add(createTimelineItem("09:00 - Tư vấn KH", AdminUiPalette.KPI_BLUE));
-        inner.add(createTimelineItem("11:00 - Chốt đơn", AdminUiPalette.SUCCESS));
-        inner.add(createTimelineItem("14:00 - Lái thử CX-5", AdminUiPalette.WARNING));
-        inner.add(createTimelineItem("16:30 - Thanh toán", AdminUiPalette.DANGER));
+        List<DashboardTaskItem> timelineItems = overviewData.taskItems().stream().limit(4).toList();
+        if (timelineItems.isEmpty()) {
+            inner.add(createTimelineItem("Chưa có lịch hôm nay", UiPalette.TEXT_MUTED));
+        } else {
+            timelineItems.forEach(item -> inner.add(createTimelineItem(
+                    toDisplayTime(item.dueAt()) + " - " + item.action(),
+                    resolveTimelineColor(item.status())
+            )));
+        }
 
         card.add(inner, BorderLayout.NORTH);
         return card;
@@ -203,14 +281,70 @@ public class StaffDashboardFrame extends JFrame {
     private JLabel createTimelineItem(String text, java.awt.Color barColor) {
         JLabel label = new JLabel(text);
         label.setOpaque(true);
-        label.setBackground(AdminUiPalette.SURFACE_ELEVATED);
-        label.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        label.setBackground(UiPalette.SURFACE_ELEVATED);
+        label.setForeground(UiPalette.TEXT_PRIMARY);
         label.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         label.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 3, 0, 0, barColor),
                 BorderFactory.createEmptyBorder(5, 6, 5, 6)
         ));
         return label;
+    }
+
+    private String toDisplayTime(LocalDateTime dueAt) {
+        if (dueAt == null) {
+            return "--:--";
+        }
+        return String.format("%02d:%02d", dueAt.getHour(), dueAt.getMinute());
+    }
+
+    private String toDisplayStatus(String status) {
+        return switch (status) {
+            case "PENDING" -> "Đang xử lý";
+            case "CONFIRMED" -> "Đã xác nhận";
+            case "SCHEDULED" -> "Sắp đến";
+            case "COMPLETED" -> "Hoàn tất";
+            case "CANCELLED" -> "Đã hủy";
+            default -> status;
+        };
+    }
+
+    private java.awt.Color resolveTimelineColor(String status) {
+        return switch (status) {
+            case "PENDING" -> UiPalette.KPI_BLUE;
+            case "CONFIRMED" -> UiPalette.SUCCESS;
+            case "SCHEDULED" -> UiPalette.WARNING;
+            default -> UiPalette.SECONDARY;
+        };
+    }
+
+    private String formatCurrencyShort(BigDecimal amount) {
+        BigDecimal safeAmount = amount == null ? BigDecimal.ZERO : amount;
+        if (safeAmount.compareTo(BigDecimal.valueOf(1_000_000_000L)) >= 0) {
+            return safeAmount.divide(BigDecimal.valueOf(1_000_000_000L), 1, java.math.RoundingMode.HALF_UP) + " tỷ";
+        }
+        if (safeAmount.compareTo(BigDecimal.valueOf(1_000_000L)) >= 0) {
+            return safeAmount.divide(BigDecimal.valueOf(1_000_000L), 0, java.math.RoundingMode.HALF_UP) + " triệu";
+        }
+        return NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN")).format(safeAmount) + " đ";
+    }
+
+    private JPanel createCarsPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createCard();
+        headerCard.setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("Quản lý xe");
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+
+        headerCard.add(title, BorderLayout.CENTER);
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new CarManagementPanel(carManagementController, true), BorderLayout.CENTER);
+        return wrapper;
     }
 
     private JPanel createPlaceholderPanel(String titleText, String descriptionText) {
@@ -221,11 +355,11 @@ public class StaffDashboardFrame extends JFrame {
         card.setLayout(new GridLayout(2, 1));
 
         JLabel title = new JLabel(titleText);
-        title.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        title.setForeground(UiPalette.TEXT_PRIMARY);
         title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 20));
 
         JLabel desc = new JLabel(descriptionText);
-        desc.setForeground(AdminUiPalette.TEXT_SECONDARY);
+        desc.setForeground(UiPalette.TEXT_SECONDARY);
         desc.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
         card.add(title);
@@ -237,9 +371,9 @@ public class StaffDashboardFrame extends JFrame {
     private JPanel createCard() {
         JPanel panel = new JPanel();
         panel.setOpaque(true);
-        panel.setBackground(AdminUiPalette.SURFACE_BACKGROUND);
+        panel.setBackground(UiPalette.SURFACE_BACKGROUND);
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AdminUiPalette.BORDER_SOFT),
+                BorderFactory.createLineBorder(UiPalette.BORDER_SOFT),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
         return panel;

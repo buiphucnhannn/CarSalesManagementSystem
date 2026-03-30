@@ -8,8 +8,8 @@ import java.awt.GridLayout;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import vn.edu.ute.carsalesms.view.theme.AdminUiPalette;
-import vn.edu.ute.carsalesms.view.theme.AdminUiSizing;
+import vn.edu.ute.carsalesms.view.theme.UiPalette;
+import vn.edu.ute.carsalesms.view.theme.UiSizing;
 
 /**
  * Thẻ số liệu tổng quan cho dashboard.
@@ -20,8 +20,8 @@ public class StatCardPanel extends JPanel {
     public StatCardPanel(String title, String value, Color accentColor) {
         setLayout(new BorderLayout(0, 0));
         setOpaque(true);
-        setBackground(AdminUiPalette.SURFACE_BACKGROUND);
-        setPreferredSize(AdminUiSizing.STAT_CARD_SIZE);
+        setBackground(UiPalette.SURFACE_BACKGROUND);
+        setPreferredSize(UiSizing.STAT_CARD_SIZE);
 
         // ── Accent bar (left side, 3px) ──
         JPanel accentBar = new JPanel();
@@ -35,17 +35,17 @@ public class StatCardPanel extends JPanel {
         content.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setForeground(AdminUiPalette.TEXT_SECONDARY);
+        titleLabel.setForeground(UiPalette.TEXT_SECONDARY);
         titleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        valueLabel.setForeground(UiPalette.TEXT_PRIMARY);
         valueLabel.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
 
         content.add(titleLabel);
         content.add(valueLabel);
         add(content, BorderLayout.CENTER);
 
-        setBorder(BorderFactory.createLineBorder(AdminUiPalette.BORDER_SOFT));
+        setBorder(BorderFactory.createLineBorder(UiPalette.BORDER_SOFT));
     }
 }

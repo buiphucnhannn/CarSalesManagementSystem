@@ -3,9 +3,9 @@ package vn.edu.ute.carsalesms.view.theme;
 import java.awt.Color;
 
 /**
- * Bảng màu premium blue dùng chung cho toàn bộ giao diện admin/staff.
+ * Bảng màu premium blue dùng chung cho toàn bộ giao diện ứng dụng.
  */
-public final class AdminUiPalette {
+public final class UiPalette {
 
     // ── Background ──────────────────────────────────────────────
     public static final Color APP_BACKGROUND       = new Color(0xF1, 0xF5, 0xF9); // #F1F5F9 Slate 100
@@ -56,6 +56,7 @@ public final class AdminUiPalette {
     public static final Color GRADIENT_START         = new Color(0x1E, 0x3A, 0x5F); // #1E3A5F Deep Teal
     public static final Color GRADIENT_END           = new Color(0x37, 0x5F, 0xEB); // #375FEB
 
-    private AdminUiPalette() {
+    private UiPalette() {
     }
 }
+

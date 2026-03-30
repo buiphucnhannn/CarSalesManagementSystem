@@ -2,25 +2,36 @@ package vn.edu.ute.carsalesms.view.admin;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableModel;
+import vn.edu.ute.carsalesms.controller.CarManagementController;
+import vn.edu.ute.carsalesms.dao.CarDao;
+import vn.edu.ute.carsalesms.dao.impl.CarDaoImpl;
+import vn.edu.ute.carsalesms.dao.impl.DashboardDaoImpl;
+import vn.edu.ute.carsalesms.model.dto.AdminOverviewData;
+import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
+import vn.edu.ute.carsalesms.service.CarService;
+import vn.edu.ute.carsalesms.service.DashboardService;
+import vn.edu.ute.carsalesms.service.impl.CarServiceImpl;
+import vn.edu.ute.carsalesms.service.impl.DashboardServiceImpl;
+import vn.edu.ute.carsalesms.view.component.CarManagementPanel;
 import vn.edu.ute.carsalesms.view.component.SidebarMenuPanel;
 import vn.edu.ute.carsalesms.view.component.StatCardPanel;
-import vn.edu.ute.carsalesms.view.theme.AdminUiPalette;
-import vn.edu.ute.carsalesms.view.theme.AdminUiSizing;
+import vn.edu.ute.carsalesms.view.theme.UiPalette;
+import vn.edu.ute.carsalesms.view.theme.UiSizing;
 
 /**
  * Màn hình dashboard chính cho admin hệ thống quản lý bán xe.
@@ -70,25 +81,40 @@ public class AdminDashboardFrame extends JFrame {
     private final CardLayout contentCardLayout = new CardLayout();
     private final JPanel contentCards = new JPanel(contentCardLayout);
     private final Runnable onLogoutRequested;
+    private final AdminOverviewData overviewData;
+    private final CarManagementController carManagementController;
 
     public AdminDashboardFrame() {
-        this(() -> {
+        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), () -> {
         });
     }
 
     public AdminDashboardFrame(Runnable onLogoutRequested) {
+        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), onLogoutRequested);
+    }
+
+    public AdminDashboardFrame(AuthenticatedUser currentUser, Runnable onLogoutRequested) {
+        this(currentUser, buildDefaultDashboardService(), buildDefaultCarManagementController(), onLogoutRequested);
+    }
+
+    public AdminDashboardFrame(AuthenticatedUser currentUser,
+                               DashboardService dashboardService,
+                               CarManagementController carManagementController,
+                               Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
+        this.overviewData = loadOverviewData(dashboardService);
+        this.carManagementController = Objects.requireNonNull(carManagementController, "carManagementController is required");
         setTitle("Car Sales Management - Admin Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setMinimumSize(AdminUiSizing.WINDOW_MIN_SIZE);
-        setSize(AdminUiSizing.WINDOW_INITIAL_SIZE);
+        setMinimumSize(UiSizing.WINDOW_MIN_SIZE);
+        setSize(UiSizing.WINDOW_INITIAL_SIZE);
         setLocationRelativeTo(null);
 
         JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(AdminUiPalette.APP_BACKGROUND);
+        root.setBackground(UiPalette.APP_BACKGROUND);
 
         SidebarMenuPanel sidebar = new SidebarMenuPanel(
-                "Car Sales Admin", "ADMIN",
+                resolveDisplayName(currentUser), resolveDisplayRole(currentUser),
                 ADMIN_SIDEBAR_ITEMS, CARD_DASHBOARD,
                 this::switchContent,
                 this.onLogoutRequested
@@ -103,13 +129,50 @@ public class AdminDashboardFrame extends JFrame {
         root.add(mainArea, BorderLayout.CENTER);
         setContentPane(root);
     }
+
+    private static DashboardService buildDefaultDashboardService() {
+        return new DashboardServiceImpl(new DashboardDaoImpl());
+    }
+
+    private static CarManagementController buildDefaultCarManagementController() {
+        CarDao carDao = new CarDaoImpl();
+        CarService carService = new CarServiceImpl(carDao);
+        return new CarManagementController(carService);
+    }
+
+    private AdminOverviewData loadOverviewData(DashboardService dashboardService) {
+        if (dashboardService == null) {
+            return AdminOverviewData.empty();
+        }
+        try {
+            return dashboardService.getAdminOverview();
+        } catch (Exception ex) {
+            return AdminOverviewData.empty();
+        }
+    }
+
+    private String resolveDisplayName(AuthenticatedUser currentUser) {
+        if (currentUser == null || currentUser.fullName() == null || currentUser.fullName().isBlank()) {
+            return "Car Sales Admin";
+        }
+        return currentUser.fullName();
+    }
+
+    private String resolveDisplayRole(AuthenticatedUser currentUser) {
+        if (currentUser == null || currentUser.role() == null) {
+            return "ADMIN";
+        }
+        return currentUser.role().name();
+    }
+
     private JPanel createContentCards() {
         contentCards.setOpaque(false);
         contentCards.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
 
         contentCards.add(createDashboardPanel(), CARD_DASHBOARD);
+        contentCards.add(createCarsPanel(), CARD_CARS);
         MODULE_ITEMS.stream()
-                .filter(item -> item.description() != null)
+                .filter(item -> item.description() != null && !CARD_CARS.equals(item.key()))
                 .forEach(item -> contentCards.add(
                         createModulePlaceholderPanel(item.label(), item.description()),
                         item.key()
@@ -123,24 +186,20 @@ public class AdminDashboardFrame extends JFrame {
     private JScrollPane createDashboardPanel() {
         JPanel dashboard = new JPanel(new BorderLayout(0, 8));
         dashboard.setOpaque(true);
-        dashboard.setBackground(AdminUiPalette.APP_BACKGROUND);
+        dashboard.setBackground(UiPalette.APP_BACKGROUND);
 
         // Stat cards row - fill width equally
         JPanel statsGrid = new JPanel(new GridLayout(1, 4, 8, 0));
         statsGrid.setOpaque(false);
-        statsGrid.add(new StatCardPanel("Doanh thu tháng", "4.8 tỷ", AdminUiPalette.KPI_BLUE));
-        statsGrid.add(new StatCardPanel("Đơn bán hôm nay", "18", AdminUiPalette.KPI_GREEN));
-        statsGrid.add(new StatCardPanel("Khách chờ tư vấn", "32", AdminUiPalette.KPI_AMBER));
-        statsGrid.add(new StatCardPanel("Lịch lái thử", "11", AdminUiPalette.KPI_PURPLE));
+        statsGrid.add(new StatCardPanel("Doanh thu tháng", formatCurrencyShort(overviewData.monthlyRevenue()), UiPalette.KPI_BLUE));
+        statsGrid.add(new StatCardPanel("Đơn bán hôm nay", String.valueOf(overviewData.todayOrderCount()), UiPalette.KPI_GREEN));
+        statsGrid.add(new StatCardPanel("Khách chờ tư vấn", String.valueOf(overviewData.pendingOrderCount()), UiPalette.KPI_AMBER));
+        statsGrid.add(new StatCardPanel("Lịch lái thử", String.valueOf(overviewData.todayTestDriveCount()), UiPalette.KPI_PURPLE));
 
-        // Bảng đơn bán chiếm phần lớn, thao tác nhanh gọn bên phải
-        JPanel bottomSection = new JPanel(new BorderLayout(8, 0));
+        // Bảng đơn bán chiếm toàn bộ vùng nội dung chính
+        JPanel bottomSection = new JPanel(new BorderLayout());
         bottomSection.setOpaque(false);
         bottomSection.add(createRecentOrdersPanel(), BorderLayout.CENTER);
-
-        JPanel rightPanel = createQuickActionsPanel();
-        rightPanel.setPreferredSize(new Dimension(180, 0));
-        bottomSection.add(rightPanel, BorderLayout.EAST);
 
         dashboard.add(statsGrid, BorderLayout.NORTH);
         dashboard.add(bottomSection, BorderLayout.CENTER);
@@ -153,21 +212,44 @@ public class AdminDashboardFrame extends JFrame {
         return scrollPane;
     }
 
+    private JPanel createCarsPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createWhiteCard();
+        headerCard.setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("Quản lý xe");
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+
+        headerCard.add(title, BorderLayout.CENTER);
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new CarManagementPanel(carManagementController, true), BorderLayout.CENTER);
+        return wrapper;
+    }
+
     private JPanel createRecentOrdersPanel() {
         JPanel container = createWhiteCard();
         container.setLayout(new BorderLayout(0, 8));
 
         JLabel title = new JLabel("Đơn bán gần nhất");
         title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 14));
-        title.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        title.setForeground(UiPalette.TEXT_PRIMARY);
 
         String[] columns = {"Mã đơn", "Khách hàng", "Mẫu xe", "Trạng thái"};
-        Object[][] data = {
-                {"SO-2401", "Nguyễn Văn A", "Toyota Vios", "Đặt cọc"},
-                {"SO-2402", "Trần Minh K", "Mazda CX-5", "Đã thanh toán"},
-                {"SO-2403", "Lê Thu H", "Kia Seltos", "Chờ duyệt"},
-                {"SO-2404", "Phạm Gia B", "Hyundai Accent", "Đang xử lý"}
-        };
+        Object[][] data = overviewData.recentOrders().stream()
+                .map(item -> new Object[]{
+                        item.orderCode(),
+                        item.customerName(),
+                        item.carName(),
+                        toDisplayOrderStatus(item.status())
+                })
+                .toArray(Object[][]::new);
+        if (data.length == 0) {
+            data = new Object[][]{{"-", "Chưa có dữ liệu", "-", "-"}};
+        }
 
         JTable table = new JTable(new DefaultTableModel(data, columns) {
             @Override
@@ -179,59 +261,22 @@ public class AdminDashboardFrame extends JFrame {
         table.setFillsViewportHeight(true);
         table.getTableHeader().setReorderingAllowed(false);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        table.setGridColor(AdminUiPalette.BORDER_SOFT);
-        table.setBackground(AdminUiPalette.TABLE_BACKGROUND);
-        table.setSelectionBackground(AdminUiPalette.PRIMARY_SOFT);
-        table.setSelectionForeground(AdminUiPalette.TEXT_PRIMARY);
-        table.getTableHeader().setBackground(AdminUiPalette.PRIMARY_SOFT);
-        table.getTableHeader().setForeground(AdminUiPalette.TEXT_PRIMARY);
+        table.setGridColor(UiPalette.BORDER_SOFT);
+        table.setBackground(UiPalette.TABLE_BACKGROUND);
+        table.setSelectionBackground(UiPalette.PRIMARY_SOFT);
+        table.setSelectionForeground(UiPalette.TEXT_PRIMARY);
+        table.getTableHeader().setBackground(UiPalette.PRIMARY_SOFT);
+        table.getTableHeader().setForeground(UiPalette.TEXT_PRIMARY);
 
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createLineBorder(AdminUiPalette.BORDER_SOFT));
-        scrollPane.getViewport().setBackground(AdminUiPalette.TABLE_BACKGROUND);
+        scrollPane.setBorder(BorderFactory.createLineBorder(UiPalette.BORDER_SOFT));
+        scrollPane.getViewport().setBackground(UiPalette.TABLE_BACKGROUND);
 
         container.add(title, BorderLayout.NORTH);
         container.add(scrollPane, BorderLayout.CENTER);
         return container;
     }
 
-    private JPanel createQuickActionsPanel() {
-        JPanel container = createWhiteCard();
-        container.setLayout(new BorderLayout(0, 8));
-
-        JLabel title = new JLabel("Thao tác nhanh");
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 13));
-        title.setForeground(AdminUiPalette.TEXT_PRIMARY);
-
-        JPanel actions = new JPanel(new GridLayout(4, 1, 0, 5));
-        actions.setOpaque(false);
-        actions.add(createActionButton("Thêm khách hàng"));
-        actions.add(createActionButton("Tạo lịch lái thử"));
-        actions.add(createActionButton("Cập nhật KM"));
-        actions.add(createActionButton("Xuất báo cáo"));
-
-        JPanel top = new JPanel(new BorderLayout());
-        top.setOpaque(false);
-        top.add(title, BorderLayout.NORTH);
-        top.add(actions, BorderLayout.CENTER);
-
-        container.add(top, BorderLayout.NORTH);
-        return container;
-    }
-
-    private JButton createActionButton(String title) {
-        JButton button = new JButton(title);
-        button.setHorizontalAlignment(SwingConstants.LEFT);
-        button.setFocusPainted(false);
-        button.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AdminUiPalette.PRIMARY_BORDER),
-                BorderFactory.createEmptyBorder(6, 10, 6, 8)
-        ));
-        button.setBackground(AdminUiPalette.ACTION_BG);
-        button.setForeground(AdminUiPalette.ACTION_FG);
-        return button;
-    }
 
     private JPanel createModulePlaceholderPanel(String moduleTitle, String description) {
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -242,11 +287,11 @@ public class AdminDashboardFrame extends JFrame {
 
         JLabel title = new JLabel(moduleTitle);
         title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 20));
-        title.setForeground(AdminUiPalette.TEXT_PRIMARY);
+        title.setForeground(UiPalette.TEXT_PRIMARY);
 
         JLabel desc = new JLabel(description);
         desc.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        desc.setForeground(AdminUiPalette.TEXT_SECONDARY);
+        desc.setForeground(UiPalette.TEXT_SECONDARY);
 
         card.add(title);
         card.add(desc);
@@ -257,9 +302,9 @@ public class AdminDashboardFrame extends JFrame {
     private JPanel createWhiteCard() {
         JPanel panel = new JPanel();
         panel.setOpaque(true);
-        panel.setBackground(AdminUiPalette.SURFACE_BACKGROUND);
+        panel.setBackground(UiPalette.SURFACE_BACKGROUND);
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AdminUiPalette.BORDER_SOFT),
+                BorderFactory.createLineBorder(UiPalette.BORDER_SOFT),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
         return panel;
@@ -267,5 +312,26 @@ public class AdminDashboardFrame extends JFrame {
 
     private void switchContent(String cardKey) {
         contentCardLayout.show(contentCards, cardKey);
+    }
+
+    private String formatCurrencyShort(BigDecimal amount) {
+        BigDecimal safeAmount = amount == null ? BigDecimal.ZERO : amount;
+        if (safeAmount.compareTo(BigDecimal.valueOf(1_000_000_000L)) >= 0) {
+            return safeAmount.divide(BigDecimal.valueOf(1_000_000_000L), 1, java.math.RoundingMode.HALF_UP) + " tỷ";
+        }
+        if (safeAmount.compareTo(BigDecimal.valueOf(1_000_000L)) >= 0) {
+            return safeAmount.divide(BigDecimal.valueOf(1_000_000L), 0, java.math.RoundingMode.HALF_UP) + " triệu";
+        }
+        return NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN")).format(safeAmount) + " đ";
+    }
+
+    private String toDisplayOrderStatus(String status) {
+        return switch (status) {
+            case "PENDING" -> "Đang xử lý";
+            case "CONFIRMED" -> "Đã xác nhận";
+            case "PAID" -> "Đã thanh toán";
+            case "CANCELLED" -> "Đã hủy";
+            default -> status;
+        };
     }
 }
