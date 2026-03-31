@@ -25,8 +25,20 @@ public class InstallmentServiceImpl implements InstallmentService {
 
     @Override
     public List<InstallmentItem> findByOrderId(Long orderId) {
-        return installmentPlanDao.findByOrderId(orderId)
-                .stream()
+        List<InstallmentPlan> plans = installmentPlanDao.findByOrderId(orderId);
+        
+        // TỰ ĐỘNG CHỮA LÀNH KẾT TỦA DỮ LIỆU (Auto-Heal)
+        // Những data cũ trên CSDL bị lưu lộn Status UNPAID dù Đã đóng đủ tiền.
+        for (InstallmentPlan plan : plans) {
+            BigDecimal delta = plan.getAmount().subtract(plan.getPaidAmount());
+            if (delta.compareTo(new BigDecimal("1000")) <= 0 && plan.getInstallmentStatus() == InstallmentStatus.UNPAID) {
+                plan.setPaidAmount(plan.getAmount()); // Bơm full tràn số thập phân
+                plan.setInstallmentStatus(InstallmentStatus.PAID);
+                installmentPlanDao.update(plan); // Commit lại CSDL
+            }
+        }
+
+        return plans.stream()
                 .map(this::mapToItem)
                 .collect(Collectors.toList());
     }
@@ -51,7 +63,7 @@ public class InstallmentServiceImpl implements InstallmentService {
                 .anyMatch(p -> p.getInstallmentNo() < currentPlan.getInstallmentNo() 
                                && p.getInstallmentStatus() != InstallmentStatus.PAID);
         if (hasUnpaidPrev) {
-            throw new IllegalStateException("LỖI TÀI CHÍNH: Lịch trả góp bị ngắt quãng! Yêu cầu thanh toán Dứt Điểm nợ gốc của toàn bộ Các Kỳ Hạn Trước đó (Số kỳ nhỏ hơn " + currentPlan.getInstallmentNo() + ")!");
+            throw new IllegalStateException("LỖI TÀI CHÍNH: Lịch trả góp bị ngắt quãng! Yêu cầu thanh toán Dứt Điểm nợ gốc của toàn bộ Các Kỳ Hạn Trước đó (Số kỳ nhỏ hơn " + currentPlan.getInstallmentNo() + ")! Lưu ý lỗi Số dư lẻ (Dưới 1 ngàn đồng) sẽ làm Giao dịch bị liệt vào UNPAID.");
         }
 
         // 1. Tính nợ chuẩn của kỳ này
@@ -134,7 +146,12 @@ public class InstallmentServiceImpl implements InstallmentService {
             // ---> ĐÓNG VỪA ĐỦ HOẶC THIẾU <--- (Không tính phạt Phí)
             BigDecimal newPaid = currentPlan.getPaidAmount().add(amountToCurrentPlan);
             currentPlan.setPaidAmount(newPaid);
-            if (newPaid.compareTo(currentPlan.getAmount()) >= 0) {
+            
+            // Xóa Sổ Chênh Lệch Lẻ do chia thập phân (<= 1000 vnd)
+            BigDecimal delta = currentPlan.getAmount().subtract(newPaid);
+            if (delta.compareTo(new BigDecimal("1000")) <= 0) {
+                // Tự động Bơm Đầy luôn để tránh Khách vướng Thập phân 0.33 và bị giam UNPAID
+                currentPlan.setPaidAmount(currentPlan.getAmount());
                 currentPlan.setInstallmentStatus(InstallmentStatus.PAID);
             } else {
                 currentPlan.setInstallmentStatus(InstallmentStatus.UNPAID);

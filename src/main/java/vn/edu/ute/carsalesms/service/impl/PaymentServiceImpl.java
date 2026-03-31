@@ -142,6 +142,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (totalPaid.compareTo(order.getFinalAmount()) >= 0) {
             order.setOrderStatus(OrderStatus.PAID);
             createInvoiceIfAbsent(order);
+            activateWarrantyForPaidOrder(order); // Tự động sinh Warranty
         } else if (order.getOrderStatus() == OrderStatus.PENDING && totalPaid.compareTo(BigDecimal.ZERO) > 0) {
             order.setOrderStatus(OrderStatus.CONFIRMED);
         }
@@ -172,6 +173,29 @@ public class PaymentServiceImpl implements PaymentService {
         inv.setNote("Tự động sinh khi thanh toán đủ. Đơn: " + order.getOrderCode());
 
         invoiceDao.save(inv);
+    }
+
+    /**
+     * Tự dộng kích hoạt Phiếu bảo hành 3 năm Điện tử cho các xe trong Đơn.
+     */
+    private void activateWarrantyForPaidOrder(SaleOrder order) {
+        vn.edu.ute.carsalesms.dao.WarrantyDao tmpDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
+        try {
+            for (vn.edu.ute.carsalesms.model.entity.SaleOrderDetail sod : order.getSaleOrderDetails()) {
+                if (!tmpDao.findBySaleOrderDetailId(sod.getId()).isPresent()) {
+                    vn.edu.ute.carsalesms.model.entity.Warranty w = new vn.edu.ute.carsalesms.model.entity.Warranty();
+                    w.setWarrantyCode("WR-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                    w.setSaleOrderDetail(sod);
+                    w.setStartDate(java.time.LocalDate.now());
+                    w.setEndDate(java.time.LocalDate.now().plusYears(3));
+                    w.setWarrantyStatus(vn.edu.ute.carsalesms.model.enums.WarrantyStatus.ACTIVE);
+                    w.setNote("Kích hoạt Bảo Hành Tự Động do Đơn thanh toán Xong (PAID).");
+                    tmpDao.save(w);
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Lỗi Auto-Generate Warranty: " + ex.getMessage());
+        }
     }
 
     private PaymentItem mapToItem(Payment p) {

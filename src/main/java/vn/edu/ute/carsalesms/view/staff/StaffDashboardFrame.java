@@ -263,6 +263,10 @@ public class StaffDashboardFrame extends JFrame {
         contentCards.add(createPaymentsPanel(), CARD_PAYMENTS);
         contentCards.add(createInvoicesPanel(), CARD_INVOICES);
         contentCards.add(createInstallmentsPanel(), CARD_INSTALLMENTS);
+        contentCards.add(createInstallmentsPanel(), CARD_INSTALLMENTS);
+        contentCards.add(createTestDrivesPanel(), CARD_TESTDRIVES);
+        contentCards.add(createWarrantiesPanel(), CARD_WARRANTIES);
+        
         MODULE_ITEMS.stream()
                 .filter(item -> item.description() != null
                         && !CARD_CARS.equals(item.key())
@@ -270,7 +274,9 @@ public class StaffDashboardFrame extends JFrame {
                         && !CARD_ORDERS.equals(item.key())
                         && !CARD_PAYMENTS.equals(item.key())
                         && !CARD_INVOICES.equals(item.key())
-                        && !CARD_INSTALLMENTS.equals(item.key()))
+                        && !CARD_INSTALLMENTS.equals(item.key())
+                        && !CARD_TESTDRIVES.equals(item.key())
+                        && !CARD_WARRANTIES.equals(item.key()))
                 .forEach(item -> contentCards.add(
                         createPlaceholderPanel(item.title(), item.description()),
                         item.key()
@@ -537,6 +543,53 @@ public class StaffDashboardFrame extends JFrame {
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new InstallmentPanel(installmentController, saleOrderController), BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JPanel createTestDrivesPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createCard();
+        headerCard.setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("Đăng Ký Khách Lái Thử");
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+
+        headerCard.add(title, BorderLayout.CENTER);
+
+        // Khởi tạo các Service
+        vn.edu.ute.carsalesms.dao.TestDriveDao tDao = new vn.edu.ute.carsalesms.dao.impl.TestDriveDaoImpl();
+        vn.edu.ute.carsalesms.dao.CustomerDao cDao = new vn.edu.ute.carsalesms.dao.impl.CustomerDaoImpl();
+        vn.edu.ute.carsalesms.dao.CarDao carDao = new vn.edu.ute.carsalesms.dao.impl.CarDaoImpl();
+        vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
+        vn.edu.ute.carsalesms.service.TestDriveService tService = new vn.edu.ute.carsalesms.service.impl.TestDriveServiceImpl(tDao, cDao, carDao, sDao);
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(tService, cDao, carDao, sDao), BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JPanel createWarrantiesPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createCard();
+        headerCard.setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("Hồ Sơ Bảo Hành Tự Động 3 Năm");
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+
+        headerCard.add(title, BorderLayout.CENTER);
+
+        vn.edu.ute.carsalesms.dao.WarrantyDao wDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
+        vn.edu.ute.carsalesms.dao.SaleOrderDao oDao = new vn.edu.ute.carsalesms.dao.impl.SaleOrderDaoImpl();
+        vn.edu.ute.carsalesms.service.WarrantyService wService = new vn.edu.ute.carsalesms.service.impl.WarrantyServiceImpl(wDao, oDao);
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(wService), BorderLayout.CENTER);
         return wrapper;
     }
 

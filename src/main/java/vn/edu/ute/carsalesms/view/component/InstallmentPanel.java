@@ -6,7 +6,6 @@ import vn.edu.ute.carsalesms.model.dto.InstallmentItem;
 import vn.edu.ute.carsalesms.model.dto.SaleOrderItem;
 import vn.edu.ute.carsalesms.model.enums.InstallmentStatus;
 import vn.edu.ute.carsalesms.model.enums.OrderStatus;
-import vn.edu.ute.carsalesms.model.enums.PaymentMethod;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -218,10 +217,11 @@ public class InstallmentPanel extends JPanel {
             return;
         }
 
-        String input = JOptionPane.showInputDialog(this,
+        String suggestedAmount = p.getDueRemaining().max(BigDecimal.ZERO).stripTrailingZeros().toPlainString();
+        String input = (String) JOptionPane.showInputDialog(this,
                 "Nhập số tiền đóng cho kỳ " + p.installmentNo() + " (còn nợ "
                         + String.format("%,.0f đ", p.getDueRemaining().max(BigDecimal.ZERO)) + "):",
-                "Thanh toán Trả góp", JOptionPane.QUESTION_MESSAGE);
+                "Thanh toán Trả góp", JOptionPane.QUESTION_MESSAGE, null, null, suggestedAmount);
 
         if (input != null && !input.trim().isEmpty()) {
             try {
