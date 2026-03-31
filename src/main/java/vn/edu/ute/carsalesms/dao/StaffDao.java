@@ -27,6 +27,12 @@ public interface StaffDao {
     List<Staff> findStaffs(String keyword, Status statusFilter);
 
     /**
+     * Lấy danh sách nhân viên đang hoạt động và chưa có tài khoản đăng nhập.
+     * Dùng cho combobox tạo tài khoản.
+     */
+    List<Staff> findActiveStaffsWithoutAccount();
+
+    /**
      * Tìm nhân viên theo id.
      */
     Optional<Staff> findStaffById(Long id);

@@ -31,6 +31,10 @@ public class CustomerManagementController {
         return customerService.getCustomers(keyword);
     }
 
+    public String loadNextCustomerCode() {
+        return customerService.getNextCustomerCode();
+    }
+
     /**
      * Thêm mới khách hàng.
      *

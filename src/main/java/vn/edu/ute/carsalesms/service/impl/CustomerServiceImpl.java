@@ -5,9 +5,11 @@ import vn.edu.ute.carsalesms.model.dto.CustomerCommandRequest;
 import vn.edu.ute.carsalesms.model.dto.CustomerItem;
 import vn.edu.ute.carsalesms.model.entity.Customer;
 import vn.edu.ute.carsalesms.service.CustomerService;
+import vn.edu.ute.carsalesms.util.CodeGeneratorUtil;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Triển khai CustomerService.
@@ -15,6 +17,9 @@ import java.util.Objects;
  * Không phụ thuộc vào framework UI (tách biệt Service khỏi View).
  */
 public class CustomerServiceImpl implements CustomerService {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^\\d{9,11}$");
 
     /** DAO được inject qua constructor (Dependency Inversion). */
     private final CustomerDao customerDao;
@@ -32,18 +37,40 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    public String getNextCustomerCode() {
+        List<String> existingCodes = customerDao.findCustomers(null).stream()
+                .map(Customer::getCustomerCode)
+                .toList();
+        return CodeGeneratorUtil.nextCodeFromExisting(existingCodes, "CUST-", 4);
+    }
+
+    @Override
     public CustomerItem createCustomer(CustomerCommandRequest request) {
         // 1. Validate dữ liệu đầu vào
         CustomerCommandRequest validated = validate(request, false);
 
+        String generatedCode = getNextCustomerCode();
+        CustomerCommandRequest createRequest = new CustomerCommandRequest(
+                validated.id(),
+                generatedCode,
+                validated.fullName(),
+                validated.phone(),
+                validated.email(),
+                validated.gender(),
+                validated.dateOfBirth(),
+                validated.identityNumber(),
+                validated.address(),
+                validated.note()
+        );
+
         // 2. Kiểm tra trùng mã khách hàng
-        customerDao.findByCode(validated.customerCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Mã khách hàng đã tồn tại: " + validated.customerCode());
+        customerDao.findByCode(createRequest.customerCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Mã khách hàng đã tồn tại: " + createRequest.customerCode());
         });
 
         // 3. Tạo entity và điền dữ liệu
         Customer customer = new Customer();
-        applyData(customer, validated);
+        applyData(customer, createRequest);
 
         // 4. Lưu và trả về DTO
         return toItem(customerDao.save(customer));
@@ -103,7 +130,7 @@ public class CustomerServiceImpl implements CustomerService {
         if (requireId && request.id() == null) {
             throw new IllegalArgumentException("Thiếu mã định danh khách hàng.");
         }
-        if (request.customerCode() == null || request.customerCode().isBlank()) {
+        if (requireId && (request.customerCode() == null || request.customerCode().isBlank())) {
             throw new IllegalArgumentException("Vui lòng nhập mã khách hàng.");
         }
         if (request.fullName() == null || request.fullName().isBlank()) {
@@ -112,13 +139,23 @@ public class CustomerServiceImpl implements CustomerService {
         if (request.phone() == null || request.phone().isBlank()) {
             throw new IllegalArgumentException("Vui lòng nhập số điện thoại.");
         }
+        if (!PHONE_PATTERN.matcher(request.phone().trim()).matches()) {
+            throw new IllegalArgumentException("Số điện thoại phải gồm 9-11 chữ số.");
+        }
+
+        String normalizedEmail = request.email() == null ? null : request.email().trim();
+        if (normalizedEmail != null && !normalizedEmail.isBlank() && !EMAIL_PATTERN.matcher(normalizedEmail).matches()) {
+            throw new IllegalArgumentException("Email không hợp lệ (ví dụ: name@example.com).");
+        }
+
+        String normalizedCode = request.customerCode() == null ? null : request.customerCode().trim().toUpperCase();
         // Trả về record mới với dữ liệu đã trim
         return new CustomerCommandRequest(
                 request.id(),
-                request.customerCode().trim().toUpperCase(),
+                normalizedCode,
                 request.fullName().trim(),
                 request.phone().trim(),
-                request.email() == null ? null : request.email().trim(),
+                normalizedEmail == null || normalizedEmail.isEmpty() ? null : normalizedEmail,
                 request.gender(),
                 request.dateOfBirth(),
                 request.identityNumber() == null ? null : request.identityNumber().trim(),

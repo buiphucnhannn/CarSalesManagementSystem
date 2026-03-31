@@ -412,7 +412,14 @@ public class CarManagementPanel extends JPanel {
         }
 
         private void showEditor(BrandManagementItem existing) {
-            BrandEditorDialog dialog = new BrandEditorDialog(SwingUtilities.getWindowAncestor(this), existing);
+            CarManagementMetadata metadata;
+            try {
+                metadata = carController.loadMetadata();
+            } catch (Exception ex) {
+                showError(ex.getMessage());
+                return;
+            }
+            BrandEditorDialog dialog = new BrandEditorDialog(SwingUtilities.getWindowAncestor(this), existing, metadata.nextBrandCode());
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
                 try {
@@ -541,7 +548,14 @@ public class CarManagementPanel extends JPanel {
         }
 
         private void showEditor(CategoryManagementItem existing) {
-            CategoryEditorDialog dialog = new CategoryEditorDialog(SwingUtilities.getWindowAncestor(this), existing);
+            CarManagementMetadata metadata;
+            try {
+                metadata = carController.loadMetadata();
+            } catch (Exception ex) {
+                showError(ex.getMessage());
+                return;
+            }
+            CategoryEditorDialog dialog = new CategoryEditorDialog(SwingUtilities.getWindowAncestor(this), existing, metadata.nextCategoryCode());
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
                 try {
@@ -628,6 +642,7 @@ public class CarManagementPanel extends JPanel {
 
             if (existing != null) {
                 codeField.setText(existing.carCode());
+                codeField.setEditable(true);
                 nameField.setText(existing.carName());
                 importPriceField.setText(existing.importPrice().toPlainString());
                 salePriceField.setText(existing.salePrice().toPlainString());
@@ -638,6 +653,8 @@ public class CarManagementPanel extends JPanel {
                 selectById(categoryCombo, existing.categoryId());
                 selectById(branchCombo, existing.branchId());
             } else {
+                codeField.setText(metadata.nextCarCode());
+                codeField.setEditable(false);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 
@@ -646,8 +663,8 @@ public class CarManagementPanel extends JPanel {
             JButton saveButton = new JButton("Lưu");
             cancelButton.addActionListener(e -> dispose());
             saveButton.addActionListener(e -> onSave());
-            actions.add(cancelButton);
             actions.add(saveButton);
+            actions.add(cancelButton);
 
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);
@@ -709,7 +726,7 @@ public class CarManagementPanel extends JPanel {
         private BrandCommandRequest result;
         private final Long editingId;
 
-        private BrandEditorDialog(java.awt.Window owner, BrandManagementItem existing) {
+        private BrandEditorDialog(java.awt.Window owner, BrandManagementItem existing, String nextCode) {
             super(owner, existing == null ? "Thêm hãng xe" : "Sửa hãng xe", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
             setResizable(false);
@@ -728,10 +745,13 @@ public class CarManagementPanel extends JPanel {
 
             if (existing != null) {
                 codeField.setText(existing.brandCode());
+                codeField.setEditable(true);
                 nameField.setText(existing.brandName());
                 countryField.setText(existing.country());
                 statusCombo.setSelectedItem(existing.status());
             } else {
+                codeField.setText(nextCode);
+                codeField.setEditable(false);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 
@@ -740,8 +760,8 @@ public class CarManagementPanel extends JPanel {
             JButton saveButton = new JButton("Lưu");
             cancelButton.addActionListener(e -> dispose());
             saveButton.addActionListener(e -> onSave());
-            actions.add(cancelButton);
             actions.add(saveButton);
+            actions.add(cancelButton);
 
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);
@@ -776,7 +796,7 @@ public class CarManagementPanel extends JPanel {
         private CategoryCommandRequest result;
         private final Long editingId;
 
-        private CategoryEditorDialog(java.awt.Window owner, CategoryManagementItem existing) {
+        private CategoryEditorDialog(java.awt.Window owner, CategoryManagementItem existing, String nextCode) {
             super(owner, existing == null ? "Thêm loại xe" : "Sửa loại xe", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
             setResizable(false);
@@ -793,9 +813,12 @@ public class CarManagementPanel extends JPanel {
 
             if (existing != null) {
                 codeField.setText(existing.categoryCode());
+                codeField.setEditable(true);
                 nameField.setText(existing.categoryName());
                 statusCombo.setSelectedItem(existing.status());
             } else {
+                codeField.setText(nextCode);
+                codeField.setEditable(false);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 
@@ -804,8 +827,8 @@ public class CarManagementPanel extends JPanel {
             JButton saveButton = new JButton("Lưu");
             cancelButton.addActionListener(e -> dispose());
             saveButton.addActionListener(e -> onSave());
-            actions.add(cancelButton);
             actions.add(saveButton);
+            actions.add(cancelButton);
 
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);

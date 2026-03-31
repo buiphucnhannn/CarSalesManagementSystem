@@ -18,6 +18,7 @@ import vn.edu.ute.carsalesms.model.entity.Car;
 import vn.edu.ute.carsalesms.model.entity.CarCategory;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.CarService;
+import vn.edu.ute.carsalesms.util.CodeGeneratorUtil;
 
 public class CarServiceImpl implements CarService {
 
@@ -45,19 +46,36 @@ public class CarServiceImpl implements CarService {
                         .toList(),
                 carDao.findActiveBranches().stream()
                         .map(branch -> new CarLookupItem(branch.getId(), branch.getBranchCode(), branch.getBranchName()))
-                        .toList()
+                        .toList(),
+                nextCarCode(),
+                nextBrandCode(),
+                nextCategoryCode()
         );
     }
 
     @Override
     public CarManagementItem createCar(CarCommandRequest request) {
         CarCommandRequest validated = validateRequest(request, false);
-        carDao.findByCode(validated.carCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Mã xe đã tồn tại: " + validated.carCode());
+        String generatedCode = nextCarCode();
+        CarCommandRequest createRequest = new CarCommandRequest(
+                validated.id(),
+                generatedCode,
+                validated.carName(),
+                validated.brandId(),
+                validated.categoryId(),
+                validated.branchId(),
+                validated.importPrice(),
+                validated.salePrice(),
+                validated.quantity(),
+                validated.availableQuantity(),
+                validated.status()
+        );
+        carDao.findByCode(createRequest.carCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Mã xe đã tồn tại: " + createRequest.carCode());
         });
 
         Car car = new Car();
-        applyData(car, validated);
+        applyData(car, createRequest);
         return toCarItem(carDao.save(car));
     }
 
@@ -98,12 +116,20 @@ public class CarServiceImpl implements CarService {
     @Override
     public BrandManagementItem createBrand(BrandCommandRequest request) {
         BrandCommandRequest validated = validateBrandRequest(request, false);
-        carDao.findBrandByCode(validated.brandCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Mã hãng đã tồn tại: " + validated.brandCode());
+        String generatedCode = nextBrandCode();
+        BrandCommandRequest createRequest = new BrandCommandRequest(
+                validated.id(),
+                generatedCode,
+                validated.brandName(),
+                validated.country(),
+                validated.status()
+        );
+        carDao.findBrandByCode(createRequest.brandCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Mã hãng đã tồn tại: " + createRequest.brandCode());
         });
 
         Brand brand = new Brand();
-        applyBrandData(brand, validated);
+        applyBrandData(brand, createRequest);
         return toBrandItem(carDao.saveBrand(brand));
     }
 
@@ -150,12 +176,19 @@ public class CarServiceImpl implements CarService {
     @Override
     public CategoryManagementItem createCategory(CategoryCommandRequest request) {
         CategoryCommandRequest validated = validateCategoryRequest(request, false);
-        carDao.findCategoryByCode(validated.categoryCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Mã loại xe đã tồn tại: " + validated.categoryCode());
+        String generatedCode = nextCategoryCode();
+        CategoryCommandRequest createRequest = new CategoryCommandRequest(
+                validated.id(),
+                generatedCode,
+                validated.categoryName(),
+                validated.status()
+        );
+        carDao.findCategoryByCode(createRequest.categoryCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Mã loại xe đã tồn tại: " + createRequest.categoryCode());
         });
 
         CarCategory category = new CarCategory();
-        applyCategoryData(category, validated);
+        applyCategoryData(category, createRequest);
         return toCategoryItem(carDao.saveCategory(category));
     }
 
@@ -221,7 +254,7 @@ public class CarServiceImpl implements CarService {
         if (requireId && request.id() == null) {
             throw new IllegalArgumentException("Thiếu mã định danh xe.");
         }
-        if (request.carCode() == null || request.carCode().isBlank()) {
+        if (requireId && (request.carCode() == null || request.carCode().isBlank())) {
             throw new IllegalArgumentException("Vui lòng nhập mã xe.");
         }
         if (request.carName() == null || request.carName().isBlank()) {
@@ -242,12 +275,15 @@ public class CarServiceImpl implements CarService {
         if (request.availableQuantity() == null || request.availableQuantity() < 0 || request.availableQuantity() > request.quantity()) {
             throw new IllegalArgumentException("Tồn kho khả dụng phải từ 0 đến số lượng tổng.");
         }
+        if (request.salePrice().compareTo(request.importPrice()) < 0) {
+            throw new IllegalArgumentException("Giá bán phải lớn hơn hoặc bằng giá nhập.");
+        }
 
         Status normalizedStatus = request.status() == null ? Status.ACTIVE : request.status();
         return new CarCommandRequest(
                 request.id(),
-                request.carCode(),
-                request.carName(),
+                request.carCode() == null ? null : request.carCode().trim().toUpperCase(),
+                request.carName().trim(),
                 request.brandId(),
                 request.categoryId(),
                 request.branchId(),
@@ -292,7 +328,7 @@ public class CarServiceImpl implements CarService {
         if (requireId && request.id() == null) {
             throw new IllegalArgumentException("Thiếu mã định danh hãng xe.");
         }
-        if (request.brandCode() == null || request.brandCode().isBlank()) {
+        if (requireId && (request.brandCode() == null || request.brandCode().isBlank())) {
             throw new IllegalArgumentException("Vui lòng nhập mã hãng xe.");
         }
         if (request.brandName() == null || request.brandName().isBlank()) {
@@ -301,9 +337,9 @@ public class CarServiceImpl implements CarService {
         Status normalizedStatus = request.status() == null ? Status.ACTIVE : request.status();
         return new BrandCommandRequest(
                 request.id(),
-                request.brandCode(),
-                request.brandName(),
-                request.country(),
+                request.brandCode() == null ? null : request.brandCode().trim().toUpperCase(),
+                request.brandName().trim(),
+                request.country() == null || request.country().isBlank() ? null : request.country().trim(),
                 normalizedStatus
         );
     }
@@ -331,7 +367,7 @@ public class CarServiceImpl implements CarService {
         if (requireId && request.id() == null) {
             throw new IllegalArgumentException("Thiếu mã định danh loại xe.");
         }
-        if (request.categoryCode() == null || request.categoryCode().isBlank()) {
+        if (requireId && (request.categoryCode() == null || request.categoryCode().isBlank())) {
             throw new IllegalArgumentException("Vui lòng nhập mã loại xe.");
         }
         if (request.categoryName() == null || request.categoryName().isBlank()) {
@@ -340,10 +376,31 @@ public class CarServiceImpl implements CarService {
         Status normalizedStatus = request.status() == null ? Status.ACTIVE : request.status();
         return new CategoryCommandRequest(
                 request.id(),
-                request.categoryCode(),
-                request.categoryName(),
+                request.categoryCode() == null ? null : request.categoryCode().trim().toUpperCase(),
+                request.categoryName().trim(),
                 normalizedStatus
         );
+    }
+
+    private String nextCarCode() {
+        List<String> existingCodes = carDao.findCars(null, null).stream()
+                .map(Car::getCarCode)
+                .toList();
+        return CodeGeneratorUtil.nextCodeFromExisting(existingCodes, "CAR-", 4);
+    }
+
+    private String nextBrandCode() {
+        List<String> existingCodes = carDao.findBrands(null, null).stream()
+                .map(Brand::getBrandCode)
+                .toList();
+        return CodeGeneratorUtil.nextCodeFromExisting(existingCodes, "BRAND-", 4);
+    }
+
+    private String nextCategoryCode() {
+        List<String> existingCodes = carDao.findCategories(null, null).stream()
+                .map(CarCategory::getCategoryCode)
+                .toList();
+        return CodeGeneratorUtil.nextCodeFromExisting(existingCodes, "CAT-", 4);
     }
 
     private CategoryManagementItem toCategoryItem(CarCategory category) {

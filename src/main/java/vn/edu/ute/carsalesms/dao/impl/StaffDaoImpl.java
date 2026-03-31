@@ -59,6 +59,23 @@ public class StaffDaoImpl implements StaffDao {
     }
 
     @Override
+    public List<Staff> findActiveStaffsWithoutAccount() {
+        EntityManager em = JpaUtil.getEntityManager();
+        try {
+            return em.createQuery(
+                            "select s from Staff s " +
+                            "join fetch s.branch b " +
+                            "where s.status = :activeStatus and s.account is null " +
+                            "order by s.updatedAt desc, s.id desc",
+                            Staff.class)
+                    .setParameter("activeStatus", Status.ACTIVE)
+                    .getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    @Override
     public Optional<Staff> findStaffById(Long id) {
         EntityManager em = JpaUtil.getEntityManager();
         try {

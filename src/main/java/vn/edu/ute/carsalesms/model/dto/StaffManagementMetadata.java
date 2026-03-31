@@ -9,12 +9,13 @@ import java.util.List;
  * @param branches danh sách chi nhánh đang hoạt động
  */
 public record StaffManagementMetadata(
-        List<CarLookupItem> branches
+        List<CarLookupItem> branches,
+        String nextStaffCode
 ) {
     /**
      * Trả về metadata rỗng dùng khi không load được dữ liệu.
      */
     public static StaffManagementMetadata empty() {
-        return new StaffManagementMetadata(List.of());
+        return new StaffManagementMetadata(List.of(), "ST-STAFF-01");
     }
 }

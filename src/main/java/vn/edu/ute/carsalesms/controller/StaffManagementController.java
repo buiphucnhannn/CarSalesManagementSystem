@@ -39,6 +39,13 @@ public class StaffManagementController {
     }
 
     /**
+     * Tải danh sách nhân viên ACTIVE chưa có tài khoản.
+     */
+    public List<StaffItem> loadStaffsPendingAccount() {
+        return staffService.getActiveStaffsWithoutAccount();
+    }
+
+    /**
      * Tải metadata cần thiết cho dialog (danh sách chi nhánh).
      */
     public StaffManagementMetadata loadMetadata() {

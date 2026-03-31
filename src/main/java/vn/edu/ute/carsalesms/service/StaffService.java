@@ -24,6 +24,11 @@ public interface StaffService {
     List<StaffItem> getStaffs(String keyword, Status statusFilter);
 
     /**
+     * Lấy nhân viên ACTIVE chưa có tài khoản để tạo mới.
+     */
+    List<StaffItem> getActiveStaffsWithoutAccount();
+
+    /**
      * Lấy metadata để điền ComboBox trong dialog.
      */
     StaffManagementMetadata getMetadata();

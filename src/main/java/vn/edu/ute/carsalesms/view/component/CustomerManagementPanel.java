@@ -200,8 +200,9 @@ public class CustomerManagementPanel extends JPanel {
      * @param existing null nếu thêm mới, non-null nếu sửa
      */
     private void showEditor(CustomerItem existing) {
+        String nextCode = existing == null ? controller.loadNextCustomerCode() : null;
         CustomerEditorDialog dialog = new CustomerEditorDialog(
-                SwingUtilities.getWindowAncestor(this), existing);
+                SwingUtilities.getWindowAncestor(this), existing, nextCode);
         dialog.setVisible(true);
 
         // Nếu người dùng nhấn Lưu thì dialog trả về request
@@ -393,7 +394,7 @@ public class CustomerManagementPanel extends JPanel {
          * @param owner    frame/dialog cha
          * @param existing null = thêm mới; non-null = sửa
          */
-        private CustomerEditorDialog(Window owner, CustomerItem existing) {
+        private CustomerEditorDialog(Window owner, CustomerItem existing, String nextCode) {
             super(owner,
                     existing == null ? "Thêm khách hàng" : "Sửa khách hàng",
                     ModalityType.APPLICATION_MODAL);
@@ -424,6 +425,7 @@ public class CustomerManagementPanel extends JPanel {
             // Điền dữ liệu nếu đang sửa
             if (existing != null) {
                 codeField.setText(existing.customerCode());
+                codeField.setEditable(true);
                 fullNameField.setText(existing.fullName());
                 phoneField.setText(existing.phone());
                 emailField.setText(existing.email());
@@ -434,6 +436,9 @@ public class CustomerManagementPanel extends JPanel {
                 identityField.setText(existing.identityNumber());
                 addressField.setText(existing.address());
                 noteArea.setText(existing.note());
+            } else {
+                codeField.setText(nextCode);
+                codeField.setEditable(false);
             }
 
             // ── Action buttons ──
@@ -447,8 +452,8 @@ public class CustomerManagementPanel extends JPanel {
             cancelBtn.addActionListener(e -> dispose());
             saveBtn.addActionListener(e -> onSave());
 
-            actions.add(cancelBtn);
             actions.add(saveBtn);
+            actions.add(cancelBtn);
 
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);

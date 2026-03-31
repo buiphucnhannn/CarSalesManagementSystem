@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Panel quản lý nhân viên và tài khoản đăng nhập – Module F05.
@@ -132,11 +133,24 @@ public class StaffManagementPanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getAppDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
 
     private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getAppDialogParent(), msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private int showConfirm(String message, String title, int optionType) {
+        return JOptionPane.showConfirmDialog(getAppDialogParent(), message, title, optionType);
+    }
+
+    private int showConfirm(String message, String title, int optionType, int messageType) {
+        return JOptionPane.showConfirmDialog(getAppDialogParent(), message, title, optionType, messageType);
+    }
+
+    private Component getAppDialogParent() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        return owner != null ? owner : this;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -311,8 +325,7 @@ public class StaffManagementPanel extends JPanel {
 
         /** Đặt trạng thái nhân viên thành INACTIVE (ngừng hoạt động). */
         private void deactivateStaff(StaffItem item) {
-            int confirm = JOptionPane.showConfirmDialog(
-                    this,
+            int confirm = showConfirm(
                     "Xác nhận ngừng hoạt động nhân viên: " + item.fullName() + " (" + item.staffCode() + ")?",
                     "Xác nhận",
                     JOptionPane.YES_NO_OPTION
@@ -422,6 +435,7 @@ public class StaffManagementPanel extends JPanel {
             JButton refreshBtn = createActionButton("Làm mới");
             JButton addBtn     = createActionButton("Tạo TK");
             JButton editBtn    = createActionButton("Sửa");
+            JButton resetPwdBtn = createActionButton("Đặt lại MK");
             JButton lockBtn    = createDangerButton("Khóa/Mở");
             JButton deleteBtn  = createDangerButton("Xóa TK");
 
@@ -430,6 +444,9 @@ public class StaffManagementPanel extends JPanel {
             editBtn.addActionListener(e -> selectedAccount()
                     .ifPresentOrElse(this::showAccountEditor,
                             () -> showInfo("Vui lòng chọn tài khoản cần sửa.")));
+            resetPwdBtn.addActionListener(e -> selectedAccount()
+                    .ifPresentOrElse(this::showResetPasswordDialog,
+                            () -> showInfo("Vui lòng chọn tài khoản cần đặt lại mật khẩu.")));
             // Nút Khóa/Mở: toggle trạng thái khóa tài khoản
             lockBtn.addActionListener(e -> selectedAccount()
                     .ifPresentOrElse(this::toggleLock,
@@ -441,6 +458,7 @@ public class StaffManagementPanel extends JPanel {
             right.add(refreshBtn);
             right.add(addBtn);
             right.add(editBtn);
+            right.add(resetPwdBtn);
             right.add(lockBtn);
             right.add(deleteBtn);
 
@@ -488,14 +506,21 @@ public class StaffManagementPanel extends JPanel {
             // Lấy danh sách nhân viên chưa có tài khoản để điền combo khi tạo mới
             AccountEditorDialog dialog = new AccountEditorDialog(
                     SwingUtilities.getWindowAncestor(this), existing,
-                    controller.loadStaffs(null, Status.ACTIVE));
+                    controller.loadStaffsPendingAccount());
             dialog.setVisible(true);
 
             dialog.getResult().ifPresent(request -> {
                 try {
                     if (existing == null) {
                         controller.createAccount(request);
-                        showInfo("Tạo tài khoản thành công.");
+                        dialog.getCreateSummary().ifPresentOrElse(summary ->
+                                        showCenteredInfoDialog("<html><div style='width:430px; text-align:left;'>"
+                                                + "Đã tạo tài khoản thành công cho nhân viên <b>"
+                                                + summary.role() + " - " + summary.fullName() + "</b>.<br/><br/>"
+                                                + "<b>Username:</b> " + summary.username() + "<br/>"
+                                                + "<b>Mật khẩu:</b> " + summary.rawPassword()
+                                                + "</div></html>"),
+                                () -> showCenteredInfoDialog("Tạo tài khoản thành công."));
                     } else {
                         controller.updateAccount(request);
                         showInfo("Cập nhật tài khoản thành công.");
@@ -507,6 +532,55 @@ public class StaffManagementPanel extends JPanel {
             });
         }
 
+        /** Mở dialog đặt lại mật khẩu cho tài khoản đã chọn. */
+        private void showResetPasswordDialog(AccountItem item) {
+            ResetPasswordDialog dialog = new ResetPasswordDialog(
+                    SwingUtilities.getWindowAncestor(this),
+                    item);
+            dialog.setVisible(true);
+
+            dialog.getResult().ifPresent(newPassword -> {
+                int confirm = showConfirm(
+                        "Xác nhận đặt lại mật khẩu cho nhân viên "
+                                + item.staffCode() + " - " + item.staffFullName() + "?",
+                        "Xác nhận đặt lại mật khẩu",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                );
+                if (confirm != JOptionPane.YES_OPTION) {
+                    return;
+                }
+
+                try {
+                    controller.updateAccount(new AccountCommandRequest(
+                            item.id(),
+                            item.staffId(),
+                            item.username(),
+                            newPassword,
+                            item.status()
+                    ));
+                    showCenteredInfoDialog("<html><div style='width:430px; text-align:left;'>"
+                            + "Đã đặt lại mật khẩu cho nhân viên <b>" + item.staffCode()
+                            + " - " + item.staffFullName() + "</b>.<br/><br/>"
+                            + "<b>Username:</b> " + item.username() + "<br/>"
+                            + "<b>Mật khẩu mới:</b> " + newPassword
+                            + "</div></html>");
+                    refreshData();
+                } catch (Exception ex) {
+                    showError(ex.getMessage());
+                }
+            });
+        }
+
+        /** Hiển thị thông báo ở chính giữa cửa sổ app. */
+        private void showCenteredInfoDialog(String message) {
+            JOptionPane optionPane = new JOptionPane(message, JOptionPane.INFORMATION_MESSAGE);
+            Window owner = SwingUtilities.getWindowAncestor(this);
+            JDialog dialog = optionPane.createDialog(owner, "Thông báo");
+            dialog.setLocationRelativeTo(owner);
+            dialog.setVisible(true);
+        }
+
         /**
          * Toggle khóa/mở tài khoản với xác nhận.
          *
@@ -515,8 +589,7 @@ public class StaffManagementPanel extends JPanel {
         private void toggleLock(AccountItem item) {
             boolean willLock = !item.locked();
             String action = willLock ? "khóa" : "mở khóa";
-            int confirm = JOptionPane.showConfirmDialog(
-                    this,
+            int confirm = showConfirm(
                     "Xác nhận " + action + " tài khoản: " + item.username() + "?",
                     "Xác nhận",
                     JOptionPane.YES_NO_OPTION
@@ -535,8 +608,7 @@ public class StaffManagementPanel extends JPanel {
 
         /** Xóa tài khoản với xác nhận. */
         private void deleteAccount(AccountItem item) {
-            int confirm = JOptionPane.showConfirmDialog(
-                    this,
+            int confirm = showConfirm(
                     "Xác nhận xóa tài khoản: " + item.username() + " (NV: " + item.staffFullName() + ")?",
                     "Xác nhận xóa tài khoản",
                     JOptionPane.YES_NO_OPTION,
@@ -626,6 +698,7 @@ public class StaffManagementPanel extends JPanel {
             // Điền dữ liệu cũ nếu đang sửa
             if (existing != null) {
                 codeField.setText(existing.staffCode());
+                codeField.setEditable(true);
                 fullNameField.setText(existing.fullName());
                 emailField.setText(existing.email());
                 phoneField.setText(existing.phone());
@@ -634,6 +707,8 @@ public class StaffManagementPanel extends JPanel {
                 // Chọn chi nhánh khớp branchId
                 selectBranchById(existing.branchId());
             } else {
+                codeField.setText(metadata.nextStaffCode());
+                codeField.setEditable(false);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 
@@ -647,8 +722,8 @@ public class StaffManagementPanel extends JPanel {
             cancelBtn.addActionListener(e -> dispose());
             saveBtn.addActionListener(e -> onSave());
 
-            actions.add(cancelBtn);
             actions.add(saveBtn);
+            actions.add(cancelBtn);
 
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);
@@ -713,15 +788,20 @@ public class StaffManagementPanel extends JPanel {
      */
     private static final class AccountEditorDialog extends JDialog {
 
+        private record CreateAccountSummary(String role, String fullName, String username, String rawPassword) {}
+
         /** ComboBox chọn nhân viên (chỉ hiển thị khi tạo mới). */
         private final JComboBox<StaffItem> staffCombo = new JComboBox<>();
         private final JTextField usernameField = new JTextField();
         /** Để trống khi sửa = giữ mật khẩu cũ. */
         private final JPasswordField passwordField = new JPasswordField();
+        private final JCheckBox showPasswordCheck = new JCheckBox("Hiện");
         private final JComboBox<Status> statusCombo = new JComboBox<>(Status.values());
 
         private AccountCommandRequest result;
+        private CreateAccountSummary createSummary;
         private final Long editingId;
+        private final char defaultEchoChar;
 
         private AccountEditorDialog(Window owner, AccountItem existing, List<StaffItem> allStaffs) {
             super(owner,
@@ -731,15 +811,34 @@ public class StaffManagementPanel extends JPanel {
 
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
+            defaultEchoChar = passwordField.getEchoChar();
 
             JPanel form = new JPanel(new GridLayout(4, 2, 8, 6));
             form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
+
+            // Hiển thị label ngắn gọn thay vì StaffItem.toString() dài dòng.
+            staffCombo.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list,
+                                                              Object value,
+                                                              int index,
+                                                              boolean isSelected,
+                                                              boolean cellHasFocus) {
+                    JLabel label = (JLabel) super.getListCellRendererComponent(
+                            list, value, index, isSelected, cellHasFocus);
+                    if (value instanceof StaffItem staff) {
+                        label.setText(staff.fullName() + " (" + staff.staffCode() + ")");
+                    }
+                    return label;
+                }
+            });
 
             if (existing == null) {
                 // Tạo mới: điền combo nhân viên chưa có tài khoản
                 allStaffs.stream()
                         .filter(s -> !s.hasAccount()) // Chỉ nhân viên chưa có TK
                         .forEach(staffCombo::addItem);
+                staffCombo.addActionListener(e -> populateDefaultUsername());
                 form.add(new JLabel("Nhân viên *"));
                 form.add(staffCombo);
             } else {
@@ -751,19 +850,31 @@ public class StaffManagementPanel extends JPanel {
             }
 
             passwordField.setToolTipText(existing != null ? "Để trống = giữ mật khẩu cũ" : "Bắt buộc");
+            showPasswordCheck.setOpaque(false);
+            showPasswordCheck.addActionListener(e -> applyPasswordVisibility());
+
+            JPanel passwordWrapper = new JPanel(new BorderLayout(6, 0));
+            passwordWrapper.setOpaque(false);
+            passwordWrapper.add(passwordField, BorderLayout.CENTER);
+            passwordWrapper.add(showPasswordCheck, BorderLayout.EAST);
 
             form.add(new JLabel("Tên đăng nhập *")); form.add(usernameField);
             form.add(new JLabel(existing != null ? "Mật khẩu mới (tùy chọn)" : "Mật khẩu *"));
-            form.add(passwordField);
+            form.add(passwordWrapper);
             form.add(new JLabel("Trạng thái"));       form.add(statusCombo);
 
             // Điền dữ liệu cũ nếu sửa
             if (existing != null) {
                 usernameField.setText(existing.username());
                 statusCombo.setSelectedItem(existing.status());
+                showPasswordCheck.setSelected(false);
             } else {
                 statusCombo.setSelectedItem(Status.ACTIVE);
+                passwordField.setText(generateRandomPassword(8));
+                populateDefaultUsername();
+                showPasswordCheck.setSelected(true);
             }
+            applyPasswordVisibility();
 
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
             JButton cancelBtn = new JButton("Hủy");
@@ -775,8 +886,8 @@ public class StaffManagementPanel extends JPanel {
             cancelBtn.addActionListener(e -> dispose());
             saveBtn.addActionListener(e -> onSave(existing));
 
-            actions.add(cancelBtn);
             actions.add(saveBtn);
+            actions.add(cancelBtn);
 
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);
@@ -817,8 +928,15 @@ public class StaffManagementPanel extends JPanel {
                     return;
                 }
                 staffId = selectedStaff.id();
+                createSummary = new CreateAccountSummary(
+                        selectedStaff.role().name(),
+                        selectedStaff.fullName(),
+                        usernameField.getText().trim().toLowerCase(),
+                        rawPassword
+                );
             } else {
                 staffId = existing.staffId();
+                createSummary = null;
             }
 
             result = new AccountCommandRequest(
@@ -833,6 +951,136 @@ public class StaffManagementPanel extends JPanel {
 
         private Optional<AccountCommandRequest> getResult() {
             return Optional.ofNullable(result);
+        }
+
+        private Optional<CreateAccountSummary> getCreateSummary() {
+            return Optional.ofNullable(createSummary);
+        }
+
+        private void populateDefaultUsername() {
+            StaffItem selected = (StaffItem) staffCombo.getSelectedItem();
+            if (selected == null) {
+                usernameField.setText("");
+                return;
+            }
+            String email = selected.email();
+            String fallbackUsername = selected.staffCode() == null ? "" : selected.staffCode().toLowerCase();
+            String defaultUsername = (email == null || email.isBlank())
+                    ? fallbackUsername
+                    : email.trim().toLowerCase();
+            usernameField.setText(defaultUsername);
+        }
+
+        private String generateRandomPassword(int length) {
+            final String charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            StringBuilder sb = new StringBuilder(length);
+            for (int i = 0; i < length; i++) {
+                int idx = ThreadLocalRandom.current().nextInt(charset.length());
+                sb.append(charset.charAt(idx));
+            }
+            return sb.toString();
+        }
+
+        private void applyPasswordVisibility() {
+            passwordField.setEchoChar(showPasswordCheck.isSelected() ? (char) 0 : defaultEchoChar);
+        }
+    }
+
+    /** Dialog đặt lại mật khẩu cho tài khoản hiện có. */
+    private static final class ResetPasswordDialog extends JDialog {
+
+        private final JLabel targetLabel = new JLabel();
+        private final JTextField usernameField = new JTextField();
+        private final JPasswordField passwordField = new JPasswordField();
+        private final JCheckBox showPasswordCheck = new JCheckBox("Hiện");
+        private final char defaultEchoChar;
+
+        private String result;
+
+        private ResetPasswordDialog(Window owner, AccountItem account) {
+            super(owner, "Đặt lại mật khẩu", ModalityType.APPLICATION_MODAL);
+            setResizable(false);
+            setLayout(new BorderLayout(0, 8));
+
+            defaultEchoChar = passwordField.getEchoChar();
+
+            JPanel form = new JPanel(new GridLayout(3, 2, 8, 6));
+            form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
+
+            targetLabel.setText(account.staffCode() + " - " + account.staffFullName());
+            targetLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+
+            usernameField.setText(account.username());
+            usernameField.setEditable(false);
+
+            passwordField.setText(generateRandomPassword(8));
+            showPasswordCheck.setOpaque(false);
+            showPasswordCheck.setSelected(true);
+            showPasswordCheck.addActionListener(e -> applyPasswordVisibility());
+
+            JPanel passwordWrapper = new JPanel(new BorderLayout(6, 0));
+            passwordWrapper.setOpaque(false);
+            passwordWrapper.add(passwordField, BorderLayout.CENTER);
+            passwordWrapper.add(showPasswordCheck, BorderLayout.EAST);
+
+            form.add(new JLabel("Đặt lại cho"));
+            form.add(targetLabel);
+            form.add(new JLabel("Username"));
+            form.add(usernameField);
+            form.add(new JLabel("Mật khẩu mới *"));
+            form.add(passwordWrapper);
+
+            JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+            JButton cancelBtn = new JButton("Hủy");
+            JButton saveBtn = new JButton("Lưu");
+            saveBtn.setBackground(UiPalette.PRIMARY);
+            saveBtn.setForeground(Color.WHITE);
+            saveBtn.setFocusPainted(false);
+
+            cancelBtn.addActionListener(e -> dispose());
+            saveBtn.addActionListener(e -> onSave());
+
+            actions.add(saveBtn);
+            actions.add(cancelBtn);
+
+            add(form, BorderLayout.CENTER);
+            add(actions, BorderLayout.SOUTH);
+
+            applyPasswordVisibility();
+            pack();
+            setMinimumSize(new Dimension(460, 230));
+            setSize(getMinimumSize());
+            setLocationRelativeTo(owner);
+        }
+
+        private void onSave() {
+            String password = new String(passwordField.getPassword()).trim();
+            if (password.isBlank()) {
+                JOptionPane.showMessageDialog(this,
+                        "Vui lòng nhập mật khẩu mới.",
+                        "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            result = password;
+            dispose();
+        }
+
+        private Optional<String> getResult() {
+            return Optional.ofNullable(result);
+        }
+
+        private void applyPasswordVisibility() {
+            passwordField.setEchoChar(showPasswordCheck.isSelected() ? (char) 0 : defaultEchoChar);
+        }
+
+        private String generateRandomPassword(int length) {
+            final String charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            StringBuilder sb = new StringBuilder(length);
+            for (int i = 0; i < length; i++) {
+                int idx = ThreadLocalRandom.current().nextInt(charset.length());
+                sb.append(charset.charAt(idx));
+            }
+            return sb.toString();
         }
     }
 }

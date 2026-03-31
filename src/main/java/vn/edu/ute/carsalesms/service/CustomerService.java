@@ -21,6 +21,11 @@ public interface CustomerService {
     List<CustomerItem> getCustomers(String keyword);
 
     /**
+     * Sinh mã khách hàng kế tiếp theo dữ liệu hiện có.
+     */
+    String getNextCustomerCode();
+
+    /**
      * Thêm mới khách hàng sau khi validate.
      *
      * @param request dữ liệu từ dialog
