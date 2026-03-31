@@ -412,14 +412,7 @@ public class CarManagementPanel extends JPanel {
         }
 
         private void showEditor(BrandManagementItem existing) {
-            CarManagementMetadata metadata;
-            try {
-                metadata = carController.loadMetadata();
-            } catch (Exception ex) {
-                showError(ex.getMessage());
-                return;
-            }
-            BrandEditorDialog dialog = new BrandEditorDialog(SwingUtilities.getWindowAncestor(this), existing, metadata.nextBrandCode());
+            BrandEditorDialog dialog = new BrandEditorDialog(SwingUtilities.getWindowAncestor(this), existing);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
                 try {
@@ -548,14 +541,7 @@ public class CarManagementPanel extends JPanel {
         }
 
         private void showEditor(CategoryManagementItem existing) {
-            CarManagementMetadata metadata;
-            try {
-                metadata = carController.loadMetadata();
-            } catch (Exception ex) {
-                showError(ex.getMessage());
-                return;
-            }
-            CategoryEditorDialog dialog = new CategoryEditorDialog(SwingUtilities.getWindowAncestor(this), existing, metadata.nextCategoryCode());
+            CategoryEditorDialog dialog = new CategoryEditorDialog(SwingUtilities.getWindowAncestor(this), existing);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
                 try {
@@ -653,8 +639,8 @@ public class CarManagementPanel extends JPanel {
                 selectById(categoryCombo, existing.categoryId());
                 selectById(branchCombo, existing.branchId());
             } else {
-                codeField.setText(metadata.nextCarCode());
-                codeField.setEditable(false);
+                codeField.setText("");
+                codeField.setEditable(true);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 
@@ -726,7 +712,7 @@ public class CarManagementPanel extends JPanel {
         private BrandCommandRequest result;
         private final Long editingId;
 
-        private BrandEditorDialog(java.awt.Window owner, BrandManagementItem existing, String nextCode) {
+        private BrandEditorDialog(java.awt.Window owner, BrandManagementItem existing) {
             super(owner, existing == null ? "Thêm hãng xe" : "Sửa hãng xe", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
             setResizable(false);
@@ -750,8 +736,8 @@ public class CarManagementPanel extends JPanel {
                 countryField.setText(existing.country());
                 statusCombo.setSelectedItem(existing.status());
             } else {
-                codeField.setText(nextCode);
-                codeField.setEditable(false);
+                codeField.setText("");
+                codeField.setEditable(true);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 
@@ -796,7 +782,7 @@ public class CarManagementPanel extends JPanel {
         private CategoryCommandRequest result;
         private final Long editingId;
 
-        private CategoryEditorDialog(java.awt.Window owner, CategoryManagementItem existing, String nextCode) {
+        private CategoryEditorDialog(java.awt.Window owner, CategoryManagementItem existing) {
             super(owner, existing == null ? "Thêm loại xe" : "Sửa loại xe", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
             setResizable(false);
@@ -817,8 +803,8 @@ public class CarManagementPanel extends JPanel {
                 nameField.setText(existing.categoryName());
                 statusCombo.setSelectedItem(existing.status());
             } else {
-                codeField.setText(nextCode);
-                codeField.setEditable(false);
+                codeField.setText("");
+                codeField.setEditable(true);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 

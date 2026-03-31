@@ -18,6 +18,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import vn.edu.ute.carsalesms.controller.CarManagementController;
+import vn.edu.ute.carsalesms.controller.BranchManagementController;
 import vn.edu.ute.carsalesms.controller.CustomerManagementController;
 import vn.edu.ute.carsalesms.controller.StaffManagementController;
 import vn.edu.ute.carsalesms.controller.SaleOrderController;
@@ -35,6 +36,7 @@ import vn.edu.ute.carsalesms.service.SaleOrderService;
 import vn.edu.ute.carsalesms.service.PaymentService;
 import vn.edu.ute.carsalesms.service.impl.*;
 import vn.edu.ute.carsalesms.view.component.CarManagementPanel;
+import vn.edu.ute.carsalesms.view.component.BranchManagementPanel;
 import vn.edu.ute.carsalesms.view.component.CustomerManagementPanel;
 import vn.edu.ute.carsalesms.view.component.SaleOrderPanel;
 import vn.edu.ute.carsalesms.view.component.PaymentPanel;
@@ -97,6 +99,7 @@ public class AdminDashboardFrame extends JFrame {
     private final Runnable onLogoutRequested;
     private final AdminOverviewData overviewData;
     private final CarManagementController carManagementController;
+    private final BranchManagementController branchManagementController;
     /** Controller quản lý khách hàng (F04). */
     private final CustomerManagementController customerManagementController;
     /** Controller quản lý nhân viên và tài khoản (F05). */
@@ -108,19 +111,19 @@ public class AdminDashboardFrame extends JFrame {
     private final PromotionController promotionController;
 
     public AdminDashboardFrame() {
-        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(),
+        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
                 buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), () -> {});
     }
 
     public AdminDashboardFrame(Runnable onLogoutRequested) {
-        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(),
+        this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
                 buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
     }
 
     public AdminDashboardFrame(AuthenticatedUser currentUser, Runnable onLogoutRequested) {
-        this(currentUser, buildDefaultDashboardService(), buildDefaultCarManagementController(),
+        this(currentUser, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
                 buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
     }
@@ -128,6 +131,7 @@ public class AdminDashboardFrame extends JFrame {
     public AdminDashboardFrame(AuthenticatedUser currentUser,
                                DashboardService dashboardService,
                                CarManagementController carManagementController,
+                               BranchManagementController branchManagementController,
                                CustomerManagementController customerManagementController,
                                StaffManagementController staffManagementController,
                                SaleOrderController saleOrderController,
@@ -139,6 +143,7 @@ public class AdminDashboardFrame extends JFrame {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
         this.overviewData = loadOverviewData(dashboardService);
         this.carManagementController = Objects.requireNonNull(carManagementController);
+        this.branchManagementController = Objects.requireNonNull(branchManagementController);
         this.customerManagementController = Objects.requireNonNull(customerManagementController);
         this.staffManagementController = Objects.requireNonNull(staffManagementController);
         this.saleOrderController = Objects.requireNonNull(saleOrderController);
@@ -180,6 +185,10 @@ public class AdminDashboardFrame extends JFrame {
         CarDao carDao = new CarDaoImpl();
         CarService carService = new CarServiceImpl(carDao);
         return new CarManagementController(carService);
+    }
+
+    private static BranchManagementController buildDefaultBranchManagementController() {
+        return new BranchManagementController(new BranchServiceImpl(new BranchDaoImpl()));
     }
 
     /** Khởi tạo CustomerManagementController với dependency mặc định. */
@@ -231,6 +240,7 @@ public class AdminDashboardFrame extends JFrame {
 
         contentCards.add(createDashboardPanel(), CARD_DASHBOARD);
         contentCards.add(createCarsPanel(), CARD_CARS);
+        contentCards.add(createBranchesPanel(), CARD_BRANCHES);
         contentCards.add(createCustomersPanel(), CARD_CUSTOMERS);
         contentCards.add(createStaffPanel(), CARD_STAFF);
         contentCards.add(createOrdersPanel(), CARD_ORDERS);
@@ -243,6 +253,7 @@ public class AdminDashboardFrame extends JFrame {
         MODULE_ITEMS.stream()
                 .filter(item -> item.description() != null
                         && !CARD_CARS.equals(item.key())
+                        && !CARD_BRANCHES.equals(item.key())
                         && !CARD_CUSTOMERS.equals(item.key())
                         && !CARD_STAFF.equals(item.key())
                         && !CARD_ORDERS.equals(item.key())
@@ -304,6 +315,24 @@ public class AdminDashboardFrame extends JFrame {
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new CarManagementPanel(carManagementController, true), BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JPanel createBranchesPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createWhiteCard();
+        headerCard.setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("Quản lý Chi nhánh");
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+
+        headerCard.add(title, BorderLayout.CENTER);
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new BranchManagementPanel(branchManagementController), BorderLayout.CENTER);
         return wrapper;
     }
 

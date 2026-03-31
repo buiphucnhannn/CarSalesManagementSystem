@@ -4,6 +4,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import vn.edu.ute.carsalesms.controller.AuthController;
+import vn.edu.ute.carsalesms.controller.BranchManagementController;
 import vn.edu.ute.carsalesms.controller.CarManagementController;
 import vn.edu.ute.carsalesms.controller.CustomerManagementController;
 import vn.edu.ute.carsalesms.controller.SaleOrderController;
@@ -13,6 +14,7 @@ import vn.edu.ute.carsalesms.controller.InvoiceController;
 import vn.edu.ute.carsalesms.controller.PromotionController;
 import vn.edu.ute.carsalesms.controller.StaffManagementController;
 import vn.edu.ute.carsalesms.dao.AccountDao;
+import vn.edu.ute.carsalesms.dao.BranchDao;
 import vn.edu.ute.carsalesms.dao.CarDao;
 import vn.edu.ute.carsalesms.dao.impl.*;
 import vn.edu.ute.carsalesms.dao.impl.DashboardDaoImpl;
@@ -20,6 +22,7 @@ import vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl;
 import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
 import vn.edu.ute.carsalesms.model.enums.StaffRole;
 import vn.edu.ute.carsalesms.service.AuthService;
+import vn.edu.ute.carsalesms.service.BranchService;
 import vn.edu.ute.carsalesms.service.CarService;
 import vn.edu.ute.carsalesms.service.DashboardService;
 import vn.edu.ute.carsalesms.service.impl.*;
@@ -44,6 +47,7 @@ public class AppLauncher {
             AuthController authController = buildAuthController();
             DashboardService dashboardService = buildDashboardService();
             CarManagementController carManagementController = buildCarManagementController();
+            BranchManagementController branchManagementController = buildBranchManagementController();
             CustomerManagementController customerManagementController = buildCustomerManagementController();
             StaffManagementController staffManagementController = buildStaffManagementController();
             SaleOrderController saleOrderController = buildSaleOrderController();
@@ -51,7 +55,7 @@ public class AppLauncher {
             InstallmentController installmentController = buildInstallmentController();
             InvoiceController invoiceController = buildInvoiceController();
             PromotionController promotionController = buildPromotionController();
-            showLoginFrame(authController, dashboardService, carManagementController,
+            showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
                     customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController);
         } catch (Exception e) {
             throw new IllegalStateException("Không thể khởi chạy ứng dụng", e);
@@ -72,6 +76,12 @@ public class AppLauncher {
         CarDao carDao = new CarDaoImpl();
         CarService carService = new CarServiceImpl(carDao);
         return new CarManagementController(carService);
+    }
+
+    private static BranchManagementController buildBranchManagementController() {
+        BranchDao branchDao = new BranchDaoImpl();
+        BranchService branchService = new BranchServiceImpl(branchDao);
+        return new BranchManagementController(branchService);
     }
 
     /** Khởi tạo CustomerManagementController. */
@@ -107,6 +117,7 @@ public class AppLauncher {
     private static void showLoginFrame(AuthController authController,
                                        DashboardService dashboardService,
                                        CarManagementController carManagementController,
+                                       BranchManagementController branchManagementController,
                                        CustomerManagementController customerManagementController,
                                        StaffManagementController staffManagementController,
                                        SaleOrderController saleOrderController,
@@ -117,6 +128,7 @@ public class AppLauncher {
         LoginFrame loginFrame = new LoginFrame(
                 authController,
                 user -> openDashboardByRole(user, dashboardService, carManagementController,
+                        branchManagementController,
                         customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController)
         );
         loginFrame.setVisible(true);
@@ -125,6 +137,7 @@ public class AppLauncher {
     private static void openDashboardByRole(AuthenticatedUser user,
                                             DashboardService dashboardService,
                                             CarManagementController carManagementController,
+                                            BranchManagementController branchManagementController,
                                             CustomerManagementController customerManagementController,
                                             StaffManagementController staffManagementController,
                                             SaleOrderController saleOrderController,
@@ -140,6 +153,7 @@ public class AppLauncher {
                     user,
                     dashboardService,
                     carManagementController,
+                    branchManagementController,
                     customerManagementController,
                     staffManagementController,
                     saleOrderController,
@@ -156,6 +170,11 @@ public class AppLauncher {
                     user,
                     dashboardService,
                     carManagementController,
+                    customerManagementController,
+                    saleOrderController,
+                    paymentController,
+                    installmentController,
+                    invoiceController,
                     () -> logoutAndBackToLogin(frameRef[0])
             );
             dashboard = frameRef[0];
@@ -180,6 +199,7 @@ public class AppLauncher {
         AuthController authController = buildAuthController();
         DashboardService dashboardService = buildDashboardService();
         CarManagementController carManagementController = buildCarManagementController();
+        BranchManagementController branchManagementController = buildBranchManagementController();
         CustomerManagementController customerManagementController = buildCustomerManagementController();
         StaffManagementController staffManagementController = buildStaffManagementController();
         SaleOrderController saleOrderController = buildSaleOrderController();
@@ -187,7 +207,7 @@ public class AppLauncher {
         InstallmentController installmentController = buildInstallmentController();
         InvoiceController invoiceController = buildInvoiceController();
         PromotionController promotionController = buildPromotionController();
-        showLoginFrame(authController, dashboardService, carManagementController,
+        showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
                 customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController);
     }
 }

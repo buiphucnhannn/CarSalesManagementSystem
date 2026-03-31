@@ -56,26 +56,12 @@ public class CarServiceImpl implements CarService {
     @Override
     public CarManagementItem createCar(CarCommandRequest request) {
         CarCommandRequest validated = validateRequest(request, false);
-        String generatedCode = nextCarCode();
-        CarCommandRequest createRequest = new CarCommandRequest(
-                validated.id(),
-                generatedCode,
-                validated.carName(),
-                validated.brandId(),
-                validated.categoryId(),
-                validated.branchId(),
-                validated.importPrice(),
-                validated.salePrice(),
-                validated.quantity(),
-                validated.availableQuantity(),
-                validated.status()
-        );
-        carDao.findByCode(createRequest.carCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Mã xe đã tồn tại: " + createRequest.carCode());
+        carDao.findByCode(validated.carCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Mã xe đã tồn tại: " + validated.carCode());
         });
 
         Car car = new Car();
-        applyData(car, createRequest);
+        applyData(car, validated);
         return toCarItem(carDao.save(car));
     }
 
@@ -116,20 +102,12 @@ public class CarServiceImpl implements CarService {
     @Override
     public BrandManagementItem createBrand(BrandCommandRequest request) {
         BrandCommandRequest validated = validateBrandRequest(request, false);
-        String generatedCode = nextBrandCode();
-        BrandCommandRequest createRequest = new BrandCommandRequest(
-                validated.id(),
-                generatedCode,
-                validated.brandName(),
-                validated.country(),
-                validated.status()
-        );
-        carDao.findBrandByCode(createRequest.brandCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Mã hãng đã tồn tại: " + createRequest.brandCode());
+        carDao.findBrandByCode(validated.brandCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Mã hãng đã tồn tại: " + validated.brandCode());
         });
 
         Brand brand = new Brand();
-        applyBrandData(brand, createRequest);
+        applyBrandData(brand, validated);
         return toBrandItem(carDao.saveBrand(brand));
     }
 
@@ -176,19 +154,12 @@ public class CarServiceImpl implements CarService {
     @Override
     public CategoryManagementItem createCategory(CategoryCommandRequest request) {
         CategoryCommandRequest validated = validateCategoryRequest(request, false);
-        String generatedCode = nextCategoryCode();
-        CategoryCommandRequest createRequest = new CategoryCommandRequest(
-                validated.id(),
-                generatedCode,
-                validated.categoryName(),
-                validated.status()
-        );
-        carDao.findCategoryByCode(createRequest.categoryCode()).ifPresent(existing -> {
-            throw new IllegalArgumentException("Mã loại xe đã tồn tại: " + createRequest.categoryCode());
+        carDao.findCategoryByCode(validated.categoryCode()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Mã loại xe đã tồn tại: " + validated.categoryCode());
         });
 
         CarCategory category = new CarCategory();
-        applyCategoryData(category, createRequest);
+        applyCategoryData(category, validated);
         return toCategoryItem(carDao.saveCategory(category));
     }
 
@@ -254,7 +225,7 @@ public class CarServiceImpl implements CarService {
         if (requireId && request.id() == null) {
             throw new IllegalArgumentException("Thiếu mã định danh xe.");
         }
-        if (requireId && (request.carCode() == null || request.carCode().isBlank())) {
+        if (request.carCode() == null || request.carCode().isBlank()) {
             throw new IllegalArgumentException("Vui lòng nhập mã xe.");
         }
         if (request.carName() == null || request.carName().isBlank()) {
@@ -328,7 +299,7 @@ public class CarServiceImpl implements CarService {
         if (requireId && request.id() == null) {
             throw new IllegalArgumentException("Thiếu mã định danh hãng xe.");
         }
-        if (requireId && (request.brandCode() == null || request.brandCode().isBlank())) {
+        if (request.brandCode() == null || request.brandCode().isBlank()) {
             throw new IllegalArgumentException("Vui lòng nhập mã hãng xe.");
         }
         if (request.brandName() == null || request.brandName().isBlank()) {
@@ -367,7 +338,7 @@ public class CarServiceImpl implements CarService {
         if (requireId && request.id() == null) {
             throw new IllegalArgumentException("Thiếu mã định danh loại xe.");
         }
-        if (requireId && (request.categoryCode() == null || request.categoryCode().isBlank())) {
+        if (request.categoryCode() == null || request.categoryCode().isBlank()) {
             throw new IllegalArgumentException("Vui lòng nhập mã loại xe.");
         }
         if (request.categoryName() == null || request.categoryName().isBlank()) {
