@@ -73,9 +73,12 @@ public class InstallmentPanel extends JPanel {
         toolbar.add(btnSearch);
 
         // Bảng order
-        String[] cols = {"Mã đơn", "Ngày lập", "Khách hàng", "Thực thu", "Trạng thái"};
+        String[] cols = { "Mã đơn", "Ngày lập", "Khách hàng", "Thực thu", "Còn thiếu", "Trạng thái" };
         orderModel = new DefaultTableModel(cols, 0) {
-            @Override public boolean isCellEditable(int row, int column) { return false; }
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
         };
         orderTable = new JTable(orderModel);
         orderTable.setRowHeight(28);
@@ -101,9 +104,12 @@ public class InstallmentPanel extends JPanel {
         btnPayPlan.addActionListener(e -> showPayDialog());
         toolbar.add(btnPayPlan);
 
-        String[] cols = {"Kỳ số", "Hạn chót đóng", "Phải đóng", "Đã đóng", "Cách nhau", "Trạng thái", "Ghi chú"};
+        String[] cols = { "Kỳ số", "Hạn chót đóng", "Phải đóng", "Đã đóng", "Còn thiếu", "Trạng thái", "Ghi chú" };
         planModel = new DefaultTableModel(cols, 0) {
-            @Override public boolean isCellEditable(int row, int column) { return false; }
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
         };
         planTable = new JTable(planModel);
         planTable.setRowHeight(28);
@@ -125,22 +131,33 @@ public class InstallmentPanel extends JPanel {
 
     private void refreshOrders(String keyword) {
         try {
-            // Lọc CHỈ các đơn PENDING, CONFIRMED có INSTALLMENT (Hoặc tải all lọc ra)
             List<SaleOrderItem> tmp = saleOrderController.findOrders(keyword, null);
-            orderList.clear();
-            for(SaleOrderItem i : tmp) {
-                if(i.paymentMethod() == PaymentMethod.INSTALLMENT) {
-                    orderList.add(i);
-                }
-            }
-            
+
+            // Dùng Java Stream lặp để tìm và phân biệt chính xác Đơn nào là Trả Góp (CÓ danh sách Plan trong db)
+            orderList = tmp.stream().filter(o -> {
+                List<InstallmentItem> checkPlans = installmentController.findByOrderId(o.id());
+                return checkPlans != null && !checkPlans.isEmpty();
+            }).collect(java.util.stream.Collectors.toList());
+
             orderModel.setRowCount(0);
             for (SaleOrderItem o : orderList) {
-                orderModel.addRow(new Object[]{
+                // Tính Thực Thu và Còn Nợ dự trên danh sách Kỳ Hạn
+                List<InstallmentItem> pList = installmentController.findByOrderId(o.id());
+                
+                // Dùng Java Stream Reduce tính tổng
+                BigDecimal sumAmount = pList.stream().map(InstallmentItem::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal sumPaid = pList.stream().map(InstallmentItem::paidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+                // Chặn không cho Lượng nợ rớt xuống biến số âm (nếu Database khách hâm lỡ đóng lố tỷ bạc)
+                BigDecimal debt = sumAmount.subtract(sumPaid).max(BigDecimal.ZERO);
+                BigDecimal actualReceived = o.finalAmount().subtract(debt);
+
+                orderModel.addRow(new Object[] {
                         o.orderCode(),
                         o.orderDate() == null ? "" : o.orderDate().format(DATE_FMT),
                         o.customerName(),
-                        String.format("%,.0f", o.finalAmount()),
+                        String.format("%,.0f", actualReceived), // Thực thu (Đã lấy)
+                        String.format("%,.0f", debt),           // Còn thiếu (Đang nợ)
                         o.orderStatus()
                 });
             }
@@ -150,7 +167,8 @@ public class InstallmentPanel extends JPanel {
     }
 
     private void onOrderSelected(ListSelectionEvent e) {
-        if (e.getValueIsAdjusting()) return;
+        if (e.getValueIsAdjusting())
+            return;
         int row = orderTable.getSelectedRow();
         if (row >= 0 && row < orderList.size()) {
             currentOrder = orderList.get(row);
@@ -163,17 +181,18 @@ public class InstallmentPanel extends JPanel {
     }
 
     private void refreshPlans() {
-        if (currentOrder == null) return;
+        if (currentOrder == null)
+            return;
         try {
             planList = installmentController.findByOrderId(currentOrder.id());
             planModel.setRowCount(0);
             for (InstallmentItem p : planList) {
-                planModel.addRow(new Object[]{
+                planModel.addRow(new Object[] {
                         p.installmentNo(),
                         p.dueDate(),
                         String.format("%,.0f", p.amount()),
                         String.format("%,.0f", p.paidAmount()),
-                        String.format("%,.0f", p.getDueRemaining()),
+                        String.format("%,.0f", p.getDueRemaining().max(BigDecimal.ZERO)),
                         p.status(),
                         p.note()
                 });
@@ -195,15 +214,16 @@ public class InstallmentPanel extends JPanel {
         }
         InstallmentItem p = planList.get(row);
         if (p.status() == InstallmentStatus.PAID) {
-            showInfo("Kỳ hạn này đã được thanh toán đụ.");
+            showInfo("Kỳ hạn này đã được thanh toán đủ.");
             return;
         }
 
-        String input = JOptionPane.showInputDialog(this, 
-            "Nhập số tiền đóng cho kỳ " + p.installmentNo() + " (còn nợ " + String.format("%,.0f", p.getDueRemaining()) + "):",
-            "Thanh toán Trả góp", JOptionPane.QUESTION_MESSAGE);
-        
-        if(input != null && !input.trim().isEmpty()) {
+        String input = JOptionPane.showInputDialog(this,
+                "Nhập số tiền đóng cho kỳ " + p.installmentNo() + " (còn nợ "
+                        + String.format("%,.0f đ", p.getDueRemaining().max(BigDecimal.ZERO)) + "):",
+                "Thanh toán Trả góp", JOptionPane.QUESTION_MESSAGE);
+
+        if (input != null && !input.trim().isEmpty()) {
             try {
                 BigDecimal amount = new BigDecimal(input.replaceAll("[,.]", ""));
                 installmentController.payInstallment(p.id(), amount, "Khách hàng thanh toán qua quầy");
@@ -223,14 +243,14 @@ public class InstallmentPanel extends JPanel {
         btn.setForeground(UiPalette.ACTION_FG);
         btn.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UiPalette.PRIMARY_BORDER),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)));
         return btn;
     }
 
     private void showError(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
+
     private void showInfo(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
     }

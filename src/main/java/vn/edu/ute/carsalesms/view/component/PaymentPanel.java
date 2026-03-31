@@ -17,6 +17,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,7 @@ public class PaymentPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
         // -- Order Table
-        String[] oCols = {"ID", "Mã đơn", "Khách hàng", "Thực thu", "Trạng thái"};
+        String[] oCols = {"ID", "Mã đơn", "Khách hàng", "Tổng cần thu", "Trạng thái"};
         orderTableModel = new DefaultTableModel(oCols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -192,11 +193,19 @@ public class PaymentPanel extends JPanel {
                 paidAmt = paidAmt.add(p.amount());
             }
 
-            // Chỉ cho thêm payment nếu chưa PAID và chưa bị CANCELLED
+            // Kiểm tra xem Đơn hàng có dính một phát Trả Góp (Lần nạp đầu tiên) hay chưa
+            boolean hasInstallment = paymentRows.stream().anyMatch(p -> p.paymentMethod() == PaymentMethod.INSTALLMENT);
+
+            // Bật tắt Button với Điều kiện & Giải thích (SOLID - UX)
             if (order.orderStatus() == OrderStatus.PAID || order.orderStatus() == OrderStatus.CANCELLED) {
                 btnMakePayment.setEnabled(false);
+                btnMakePayment.setToolTipText(null);
+            } else if (hasInstallment) {
+                btnMakePayment.setEnabled(false);
+                btnMakePayment.setToolTipText("Đơn này đang lập Trả góp. Bạn PHẢI qua thẻ 'Quản lý Trả Góp' để đóng tiền đợt sau!");
             } else {
                 btnMakePayment.setEnabled(true);
+                btnMakePayment.setToolTipText("Thanh toán tiền Cọc hoặc Tiền mặt toàn phần.");
             }
 
         } catch (Exception ex) {
@@ -313,7 +322,8 @@ public class PaymentPanel extends JPanel {
             form.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
             
             form.add(new JLabel("Số tiền trả *"));
-            txtAmount.setText(amountDues.toPlainString());
+            // Loại bỏ phần thập phân (.00) để ngăn lỗi parse bằng cách xoá dấu , .
+            txtAmount.setText(amountDues.setScale(0, RoundingMode.HALF_UP).toPlainString());
             form.add(txtAmount);
 
             form.add(new JLabel("Hình thức *"));

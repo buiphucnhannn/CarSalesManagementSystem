@@ -58,6 +58,23 @@ public class PaymentServiceImpl implements PaymentService {
         SaleOrder order = orderDao.findById(request.orderId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn bán không tồn tại."));
 
+        // Lấy dư nợ (Tính tổng đã trả để so sánh trước khi cho lưu Payment mới)
+        BigDecimal totalPaidSoFar = paymentDao.sumCompletedByOrderId(order.getId());
+        BigDecimal currentRemaining = order.getFinalAmount().subtract(totalPaidSoFar);
+
+        // --- VALIDATION SỐ 1: Số tiền không được đóng vượt dư nợ (CẤM NGOẠI TRỪ TRẢ GÓP KỲ SAU) ---
+        // Tại sao ngoại trừ TRẢ GÓP (Installment): Vì lúc Trả Góp từng kỳ hệ thống tự bóc tách Lãi Phạt Trễ và Phạt Vượt Hạn để thêm vào Payment. Do đó Tổng Thu có Quyền Lớn Hơn Giá Xe (FinalAmount). 
+        if (request.paymentMethod() != PaymentMethod.INSTALLMENT && request.amount().compareTo(currentRemaining) > 0) {
+            throw new IllegalArgumentException(String.format("Không hợp lệ! Vượt quá dư nợ tổng đơn (Bạn đang gõ đóng: %,.0f đ, trong khi Đơn chỉ cần trả: %,.0f đ)", request.amount(), currentRemaining));
+        }
+
+        // --- VALIDATION SỐ 2: Muốn tạo Trả Góp thì cọc phải bé hơn Total, chứ đóng cọc bằng Total thì còn dư nợ đâu mà chia tháng? ---
+        if (request.paymentMethod() == PaymentMethod.INSTALLMENT && request.installmentMonths() != null && request.installmentMonths() > 0) {
+            if (request.amount().compareTo(currentRemaining) >= 0) {
+                throw new IllegalArgumentException("Khởi tạo Trả Góp lặp lỗi: Số tiền cọc đợt đầu phải BÉ HƠN dư nợ cuối để hệ thống rải đều những tháng còn lại!");
+            }
+        }
+
         // Nếu thanh toán qua giao diện Trả Góp (Method = INSTALLMENT từ InstallmentService dội sang) 
         // thì bỏ qua kiểm tra PAID (Chữa cháy cho Seed Data cũ thường hay set Order là PAID dù còn dư nợ).
         if (order.getOrderStatus() == OrderStatus.PAID && request.paymentMethod() != PaymentMethod.INSTALLMENT) {
