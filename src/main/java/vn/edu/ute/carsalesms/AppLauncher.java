@@ -107,7 +107,7 @@ public class AppLauncher {
     }
 
     private static InvoiceController buildInvoiceController() {
-        return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl()));
+        return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl()));
     }
 
     private static PromotionController buildPromotionController() {

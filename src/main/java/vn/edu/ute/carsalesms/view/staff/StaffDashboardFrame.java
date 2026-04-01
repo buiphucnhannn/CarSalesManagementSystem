@@ -44,6 +44,7 @@ import vn.edu.ute.carsalesms.service.impl.CarServiceImpl;
 import vn.edu.ute.carsalesms.service.impl.CustomerServiceImpl;
 import vn.edu.ute.carsalesms.service.impl.DashboardServiceImpl;
 import vn.edu.ute.carsalesms.service.impl.InstallmentServiceImpl;
+import vn.edu.ute.carsalesms.service.impl.InvoicePdfExporterImpl;
 import vn.edu.ute.carsalesms.service.impl.InvoiceServiceImpl;
 import vn.edu.ute.carsalesms.service.impl.PaymentServiceImpl;
 import vn.edu.ute.carsalesms.service.impl.SaleOrderServiceImpl;
@@ -224,7 +225,7 @@ public class StaffDashboardFrame extends JFrame {
     }
 
     private static InvoiceController buildDefaultInvoiceController() {
-        return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl()));
+        return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl()));
     }
 
     private StaffOverviewData loadOverviewData(DashboardService dashboardService, AuthenticatedUser currentUser) {

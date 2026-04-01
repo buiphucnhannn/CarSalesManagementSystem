@@ -5,9 +5,11 @@ import vn.edu.ute.carsalesms.model.dto.InvoiceItem;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,9 +108,41 @@ public class InvoicePanel extends JPanel {
         }
 
         InvoiceItem inv = rows.get(row);
-        JOptionPane.showMessageDialog(this, 
-            "Đang thực hiện xuất file PDF cho hóa đơn [" + inv.invoiceCode() + "].\n(Tính năng chờ tích hợp JasperReport/iText)", 
-            "In PDF Hoá đơn", JOptionPane.INFORMATION_MESSAGE);
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Lưu hóa đơn PDF");
+        chooser.setAcceptAllFileFilterUsed(false);
+        chooser.setFileFilter(new FileNameExtensionFilter("PDF files (*.pdf)", "pdf"));
+        chooser.setSelectedFile(new java.io.File(inv.invoiceCode() + ".pdf"));
+
+        int result = chooser.showSaveDialog(getDialogParent());
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        Path outputPath = chooser.getSelectedFile().toPath();
+        if (!outputPath.getFileName().toString().toLowerCase().endsWith(".pdf")) {
+            outputPath = outputPath.resolveSibling(outputPath.getFileName() + ".pdf");
+        }
+
+        if (outputPath.toFile().exists()) {
+            int overwrite = JOptionPane.showConfirmDialog(
+                    getDialogParent(),
+                    "File đã tồn tại. Bạn có muốn ghi đè không?\n" + outputPath,
+                    "Xác nhận ghi đè",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+            if (overwrite != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            invoiceController.exportInvoicePdf(inv.id(), outputPath);
+            showInfo("Đã xuất hóa đơn PDF thành công:\n" + outputPath);
+        } catch (Exception ex) {
+            showError("Không thể xuất PDF: " + ex.getMessage());
+        }
     }
 
     private JButton createActionButton(String title) {
@@ -124,10 +158,15 @@ public class InvoicePanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
     
     private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        return owner != null ? owner : this;
     }
 }

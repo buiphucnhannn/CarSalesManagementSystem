@@ -71,4 +71,29 @@ public class InvoiceDaoImpl implements InvoiceDao {
             em.close();
         }
     }
+
+    @Override
+    public Optional<Invoice> findByIdWithOrderDetails(Long invoiceId) {
+        EntityManager em = JpaUtil.getEntityManager();
+        try {
+            Invoice invoice = em.createQuery(
+                            "select distinct i from Invoice i " +
+                            "join fetch i.saleOrder so " +
+                            "join fetch so.customer c " +
+                            "join fetch so.staff st " +
+                            "join fetch st.branch b " +
+                            "left join fetch so.saleOrderDetails sod " +
+                            "left join fetch sod.car car " +
+                            "left join fetch car.brand br " +
+                            "left join fetch car.category cg " +
+                            "where i.id = :id", Invoice.class)
+                    .setParameter("id", invoiceId)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+            return Optional.ofNullable(invoice);
+        } finally {
+            em.close();
+        }
+    }
 }

@@ -158,10 +158,15 @@ public class PaymentServiceImpl implements PaymentService {
             return; // Đã sinh hóa đơn
         }
 
-        // Tính thuế (ví dụ mặc định VAT 10% như mô tả trong plan)
+        // Chuẩn hóa công thức hóa đơn: Tổng thanh toán = Tiền trước thuế + Thuế - Giảm giá.
+        BigDecimal preTaxAmount = order.getTotalAmount() == null ? BigDecimal.ZERO : order.getTotalAmount();
+        BigDecimal discountAmount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
         BigDecimal tenPercent = new BigDecimal("0.10");
-        BigDecimal taxAmount = order.getFinalAmount().multiply(tenPercent);
-        BigDecimal totalWithTax = order.getFinalAmount().add(taxAmount);
+        BigDecimal taxAmount = preTaxAmount.multiply(tenPercent);
+        BigDecimal totalWithTax = preTaxAmount.add(taxAmount).subtract(discountAmount);
+        if (totalWithTax.compareTo(BigDecimal.ZERO) < 0) {
+            totalWithTax = BigDecimal.ZERO;
+        }
 
         Invoice inv = new Invoice();
         inv.setInvoiceCode(generateCode("INV-"));

@@ -113,19 +113,19 @@ public class AdminDashboardFrame extends JFrame {
     public AdminDashboardFrame() {
         this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
-                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), () -> {});
+                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), () -> {});
     }
 
     public AdminDashboardFrame(Runnable onLogoutRequested) {
         this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
-                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
+                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
     }
 
     public AdminDashboardFrame(AuthenticatedUser currentUser, Runnable onLogoutRequested) {
         this(currentUser, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
-                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
+                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
     }
 
     public AdminDashboardFrame(AuthenticatedUser currentUser,

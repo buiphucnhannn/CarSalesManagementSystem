@@ -27,4 +27,9 @@ public interface InvoiceDao {
      * Tải tất cả hóa đơn (hỗ trợ tìm kiếm theo keyword: Mã hóa đơn, khách mua).
      */
     List<Invoice> findAll(String keyword);
+
+    /**
+     * Tải hóa đơn theo id và nạp đầy đủ dữ liệu liên quan để xuất PDF.
+     */
+    Optional<Invoice> findByIdWithOrderDetails(Long invoiceId);
 }
