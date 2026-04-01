@@ -45,10 +45,15 @@ public class DashboardServiceImpl implements DashboardService {
                 .limit(STAFF_TASK_LIMIT)
                 .toList();
 
+        // Mở rộng vi mô thời gian tìm kiếm Lịch lái thử SCHEDULED
+        // Để nó đếm TOÀN BỘ các Lịch báo cáo chưa chạy thay vì bị giới hạn chỉ vào startOfDay - endOfDay
+        LocalDateTime farPast = startOfDay.minusYears(1);
+        LocalDateTime farFuture = startOfDay.plusYears(5);
+
         return new StaffOverviewData(
                 dashboardDao.countOrdersByStaffAndStatuses(staffId, List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED)),
                 dashboardDao.sumCompletedPaymentsByStaffInRange(staffId, startOfDay, endOfDay),
-                dashboardDao.countTestDrivesByStaffAndStatusInRange(staffId, TestDriveStatus.SCHEDULED, startOfDay, endOfDay),
+                dashboardDao.countTestDrivesByStaffAndStatusInRange(staffId, TestDriveStatus.SCHEDULED, farPast, farFuture),
                 dashboardDao.countWarrantiesByStaffAndStatus(staffId, WarrantyStatus.ACTIVE),
                 taskItems
         );
@@ -64,11 +69,15 @@ public class DashboardServiceImpl implements DashboardService {
         LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
 
+        // Mở rộng vi mô thời gian tìm kiếm test drive
+        LocalDateTime farPast = startOfDay.minusYears(1);
+        LocalDateTime farFuture = startOfDay.plusYears(5);
+
         return new AdminOverviewData(
                 dashboardDao.sumCompletedPaymentsInRange(startOfMonth, endOfMonth),
                 dashboardDao.countOrdersInRange(startOfDay, endOfDay),
                 dashboardDao.countOrdersByStatuses(List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED)),
-                dashboardDao.countTestDrivesByStatusInRange(TestDriveStatus.SCHEDULED, startOfDay, endOfDay),
+                dashboardDao.countTestDrivesByStatusInRange(TestDriveStatus.SCHEDULED, farPast, farFuture),
                 dashboardDao.findRecentOrders(ADMIN_RECENT_ORDER_LIMIT)
         );
     }

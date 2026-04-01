@@ -104,7 +104,8 @@ public class StaffDashboardFrame extends JFrame {
     private final JPanel contentCards = new JPanel(contentCardLayout);
     private final Runnable onLogoutRequested;
     private final Long currentStaffId;
-    private final StaffOverviewData overviewData;
+    private final DashboardService dashboardService;
+    private final AuthenticatedUser currentUser;
     private final CarManagementController carManagementController;
     private final CustomerManagementController customerManagementController;
     private final SaleOrderController saleOrderController;
@@ -112,6 +113,9 @@ public class StaffDashboardFrame extends JFrame {
     private final InstallmentController installmentController;
     private final InvoiceController invoiceController;
     private final StatisticsController statisticsController;
+    
+    // Đổi overviewData sang không final để có thể cập nhật đè khi Refresh
+    private StaffOverviewData overviewData;
 
     public StaffDashboardFrame() {
         this(null,
@@ -164,6 +168,8 @@ public class StaffDashboardFrame extends JFrame {
                                StatisticsController statisticsController,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
+        this.dashboardService = Objects.requireNonNull(dashboardService, "dashboardService is required");
+        this.currentUser = currentUser;
         this.currentStaffId = currentUser == null ? null : currentUser.staffId();
         this.overviewData = loadOverviewData(dashboardService, currentUser);
         this.carManagementController = Objects.requireNonNull(carManagementController, "carManagementController is required");
@@ -695,7 +701,11 @@ public class StaffDashboardFrame extends JFrame {
 
     private JComponent createCardByKey(String cardKey) {
         return switch (cardKey) {
-            case CARD_OVERVIEW -> createOverviewPanel();
+            case CARD_OVERVIEW -> {
+                // Tự động Cập nhật lại Số Liệu Tổng Quan (Live Update) khi User Bấm vào Tab Dashboard
+                this.overviewData = loadOverviewData(this.dashboardService, this.currentUser);
+                yield createOverviewPanel();
+            }
             case CARD_CARS -> createCarsPanel();
             case CARD_CUSTOMERS -> createCustomersPanel();
             case CARD_ORDERS -> createOrdersPanel();

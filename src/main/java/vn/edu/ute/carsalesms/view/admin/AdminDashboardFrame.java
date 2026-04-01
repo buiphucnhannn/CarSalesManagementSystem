@@ -101,7 +101,9 @@ public class AdminDashboardFrame extends JFrame {
     private final CardLayout contentCardLayout = new CardLayout();
     private final JPanel contentCards = new JPanel(contentCardLayout);
     private final Runnable onLogoutRequested;
-    private final AdminOverviewData overviewData;
+    private final DashboardService dashboardService;
+    // Đổi AdminOverviewData sang không final để load đè
+    private AdminOverviewData overviewData;
     private final CarManagementController carManagementController;
     private final BranchManagementController branchManagementController;
     /** Controller quản lý khách hàng (F04). */
@@ -148,6 +150,7 @@ public class AdminDashboardFrame extends JFrame {
                                StatisticsController statisticsController,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
+        this.dashboardService = Objects.requireNonNull(dashboardService, "dashboardService is required");
         this.overviewData = loadOverviewData(dashboardService);
         this.carManagementController = Objects.requireNonNull(carManagementController);
         this.branchManagementController = Objects.requireNonNull(branchManagementController);
@@ -611,7 +614,11 @@ public class AdminDashboardFrame extends JFrame {
 
     private JComponent createCardByKey(String cardKey) {
         return switch (cardKey) {
-            case CARD_DASHBOARD -> createDashboardPanel();
+            case CARD_DASHBOARD -> {
+                // Tự động Cập nhật lại Số Liệu Tổng Quan (Live Update) khi User Bấm vào Tab
+                this.overviewData = loadOverviewData(this.dashboardService);
+                yield createDashboardPanel();
+            }
             case CARD_CARS -> createCarsPanel();
             case CARD_BRANCHES -> createBranchesPanel();
             case CARD_CUSTOMERS -> createCustomersPanel();
