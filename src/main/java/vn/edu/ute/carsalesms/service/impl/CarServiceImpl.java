@@ -18,6 +18,7 @@ import vn.edu.ute.carsalesms.model.entity.Car;
 import vn.edu.ute.carsalesms.model.entity.CarCategory;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.CarService;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 import vn.edu.ute.carsalesms.util.CodeGeneratorUtil;
 
 public class CarServiceImpl implements CarService {
@@ -30,13 +31,35 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public List<CarManagementItem> getCars(String keyword, Status statusFilter) {
-        return carDao.findCars(keyword, statusFilter).stream()
+        List<CarManagementItem> cars = carDao.findCars(keyword, statusFilter).stream()
                 .map(this::toCarItem)
+                .toList();
+        if (CurrentSession.isAdmin()) {
+            return cars;
+        }
+        Long sessionBranchId = CurrentSession.currentBranchId();
+        if (sessionBranchId == null) {
+            return cars;
+        }
+        return cars.stream()
+                .filter(item -> sessionBranchId.equals(item.branchId()))
                 .toList();
     }
 
     @Override
     public CarManagementMetadata getMetadata() {
+        List<CarLookupItem> branches = carDao.findActiveBranches().stream()
+                .map(branch -> new CarLookupItem(branch.getId(), branch.getBranchCode(), branch.getBranchName()))
+                .toList();
+        if (!CurrentSession.isAdmin()) {
+            Long sessionBranchId = CurrentSession.currentBranchId();
+            if (sessionBranchId != null) {
+                branches = branches.stream()
+                        .filter(branch -> sessionBranchId.equals(branch.id()))
+                        .toList();
+            }
+        }
+
         return new CarManagementMetadata(
                 carDao.findActiveBrands().stream()
                         .map(brand -> new CarLookupItem(brand.getId(), brand.getBrandCode(), brand.getBrandName()))
@@ -44,9 +67,7 @@ public class CarServiceImpl implements CarService {
                 carDao.findActiveCategories().stream()
                         .map(category -> new CarLookupItem(category.getId(), category.getCategoryCode(), category.getCategoryName()))
                         .toList(),
-                carDao.findActiveBranches().stream()
-                        .map(branch -> new CarLookupItem(branch.getId(), branch.getBranchCode(), branch.getBranchName()))
-                        .toList(),
+                branches,
                 nextCarCode(),
                 nextBrandCode(),
                 nextCategoryCode()
@@ -56,6 +77,7 @@ public class CarServiceImpl implements CarService {
     @Override
     public CarManagementItem createCar(CarCommandRequest request) {
         CarCommandRequest validated = validateRequest(request, false);
+        assertBranchAccess(validated.branchId(), null);
         carDao.findByCode(validated.carCode()).ifPresent(existing -> {
             throw new IllegalArgumentException("Mã xe đã tồn tại: " + validated.carCode());
         });
@@ -70,6 +92,8 @@ public class CarServiceImpl implements CarService {
         CarCommandRequest validated = validateRequest(request, true);
         Car car = carDao.findById(validated.id())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy xe cần cập nhật."));
+        assertBranchAccess(car.getBranch() == null ? null : car.getBranch().getId(), car.getBranch() == null ? null : car.getBranch().getBranchName());
+        assertBranchAccess(validated.branchId(), null);
 
         carDao.findByCode(validated.carCode())
                 .filter(existing -> !existing.getId().equals(validated.id()))
@@ -88,6 +112,7 @@ public class CarServiceImpl implements CarService {
         }
         Car car = carDao.findById(carId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy xe cần ngừng kinh doanh."));
+        assertBranchAccess(car.getBranch() == null ? null : car.getBranch().getId(), car.getBranch() == null ? null : car.getBranch().getBranchName());
         car.setStatus(Status.INACTIVE);
         carDao.save(car);
     }
@@ -101,6 +126,7 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public BrandManagementItem createBrand(BrandCommandRequest request) {
+        assertAdminOnly();
         BrandCommandRequest validated = validateBrandRequest(request, false);
         carDao.findBrandByCode(validated.brandCode()).ifPresent(existing -> {
             throw new IllegalArgumentException("Mã hãng đã tồn tại: " + validated.brandCode());
@@ -113,6 +139,7 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public BrandManagementItem updateBrand(BrandCommandRequest request) {
+        assertAdminOnly();
         BrandCommandRequest validated = validateBrandRequest(request, true);
         Brand brand = carDao.findBrandById(validated.id())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hãng xe cần cập nhật."));
@@ -134,6 +161,7 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public void deactivateBrand(Long brandId) {
+        assertAdminOnly();
         if (brandId == null) {
             throw new IllegalArgumentException("Hãng xe không hợp lệ.");
         }
@@ -153,6 +181,7 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public CategoryManagementItem createCategory(CategoryCommandRequest request) {
+        assertAdminOnly();
         CategoryCommandRequest validated = validateCategoryRequest(request, false);
         carDao.findCategoryByCode(validated.categoryCode()).ifPresent(existing -> {
             throw new IllegalArgumentException("Mã loại xe đã tồn tại: " + validated.categoryCode());
@@ -165,6 +194,7 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public CategoryManagementItem updateCategory(CategoryCommandRequest request) {
+        assertAdminOnly();
         CategoryCommandRequest validated = validateCategoryRequest(request, true);
         CarCategory category = carDao.findCategoryById(validated.id())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại xe cần cập nhật."));
@@ -186,6 +216,7 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public void deactivateCategory(Long categoryId) {
+        assertAdminOnly();
         if (categoryId == null) {
             throw new IllegalArgumentException("Loại xe không hợp lệ.");
         }
@@ -283,6 +314,16 @@ public class CarServiceImpl implements CarService {
                 car.getAvailableQuantity(),
                 car.getStatus()
         );
+    }
+
+    private void assertBranchAccess(Long branchId, String branchName) {
+        CurrentSession.assertBranchAccess(branchId, branchName);
+    }
+
+    private void assertAdminOnly() {
+        if (!CurrentSession.isAuthenticated() || !CurrentSession.isAdmin()) {
+            throw new IllegalStateException("Chỉ quản trị viên mới có quyền thao tác dữ liệu dùng chung toàn hệ thống.");
+        }
     }
 
     private void applyBrandData(Brand brand, BrandCommandRequest request) {

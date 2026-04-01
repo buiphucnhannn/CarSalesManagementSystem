@@ -31,6 +31,7 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
                     "select distinct o from SaleOrder o " +
                     "join fetch o.customer c " +
                     "join fetch o.staff s " +
+                    "join fetch s.branch sb " +
                     "left join fetch o.promotion p " +
                     "where 1=1");
 
@@ -64,7 +65,8 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
             SaleOrder order = em.createQuery(
                             "select o from SaleOrder o " +
                             "join fetch o.customer " +
-                            "join fetch o.staff " +
+                            "join fetch o.staff s " +
+                            "join fetch s.branch " +
                             "left join fetch o.promotion " +
                             "where o.id = :id", SaleOrder.class)
                     .setParameter("id", id)

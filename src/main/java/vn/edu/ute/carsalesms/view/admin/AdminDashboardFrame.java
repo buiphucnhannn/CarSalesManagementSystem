@@ -101,7 +101,7 @@ public class AdminDashboardFrame extends JFrame {
     private final CardLayout contentCardLayout = new CardLayout();
     private final JPanel contentCards = new JPanel(contentCardLayout);
     private final Runnable onLogoutRequested;
-    private final AdminOverviewData overviewData;
+    private final DashboardService dashboardService;
     private final CarManagementController carManagementController;
     private final BranchManagementController branchManagementController;
     /** Controller quản lý khách hàng (F04). */
@@ -148,7 +148,7 @@ public class AdminDashboardFrame extends JFrame {
                                StatisticsController statisticsController,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
-        this.overviewData = loadOverviewData(dashboardService);
+        this.dashboardService = dashboardService;
         this.carManagementController = Objects.requireNonNull(carManagementController);
         this.branchManagementController = Objects.requireNonNull(branchManagementController);
         this.customerManagementController = Objects.requireNonNull(customerManagementController);
@@ -299,6 +299,7 @@ public class AdminDashboardFrame extends JFrame {
 
 
     private JScrollPane createDashboardPanel() {
+        AdminOverviewData overviewData = loadOverviewData(dashboardService);
         JPanel dashboard = new JPanel(new BorderLayout(0, 8));
         dashboard.setOpaque(true);
         dashboard.setBackground(UiPalette.APP_BACKGROUND);
@@ -314,7 +315,7 @@ public class AdminDashboardFrame extends JFrame {
         // Bảng đơn bán chiếm toàn bộ vùng nội dung chính
         JPanel bottomSection = new JPanel(new BorderLayout());
         bottomSection.setOpaque(false);
-        bottomSection.add(createRecentOrdersPanel(), BorderLayout.CENTER);
+        bottomSection.add(createRecentOrdersPanel(overviewData), BorderLayout.CENTER);
 
         dashboard.add(statsGrid, BorderLayout.NORTH);
         dashboard.add(bottomSection, BorderLayout.CENTER);
@@ -489,7 +490,7 @@ public class AdminDashboardFrame extends JFrame {
         return wrapper;
     }
 
-    private JPanel createRecentOrdersPanel() {
+    private JPanel createRecentOrdersPanel(AdminOverviewData overviewData) {
         JPanel container = createWhiteCard();
         container.setLayout(new BorderLayout(0, 8));
 

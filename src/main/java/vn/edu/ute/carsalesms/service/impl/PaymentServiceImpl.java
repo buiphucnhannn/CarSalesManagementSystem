@@ -16,6 +16,7 @@ import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.PaymentMethod;
 import vn.edu.ute.carsalesms.model.enums.PaymentStatus;
 import vn.edu.ute.carsalesms.service.PaymentService;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,6 +46,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public List<PaymentItem> findPaymentsByOrderId(Long orderId) {
+        SaleOrder order = orderDao.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Đơn bán không tồn tại."));
+        assertOrderAccess(order);
         List<Payment> list = paymentDao.findByOrderId(orderId);
         return list.stream().map(this::mapToItem).collect(Collectors.toList());
     }
@@ -57,6 +61,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         SaleOrder order = orderDao.findById(request.orderId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn bán không tồn tại."));
+        assertOrderAccess(order);
 
         // Lấy dư nợ (Tính tổng đã trả để so sánh trước khi cho lưu Payment mới)
         BigDecimal totalPaidSoFar = paymentDao.sumCompletedByOrderId(order.getId());
@@ -222,5 +227,15 @@ public class PaymentServiceImpl implements PaymentService {
     private String generateCode(String prefix) {
         String uuidPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         return prefix + uuidPart;
+    }
+
+    private void assertOrderAccess(SaleOrder order) {
+        Long branchId = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
+                ? null
+                : order.getStaff().getBranch().getId();
+        String branchName = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
+                ? null
+                : order.getStaff().getBranch().getBranchName();
+        CurrentSession.assertBranchAccess(branchId, branchName);
     }
 }

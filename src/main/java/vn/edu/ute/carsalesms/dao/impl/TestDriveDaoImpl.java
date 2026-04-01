@@ -16,7 +16,7 @@ public class TestDriveDaoImpl implements TestDriveDao {
         try (EntityManager em = JpaUtil.getEntityManager()) {
             // Join fetch (Tối ưu Lặp N+1) để lấy Tên Khách, Xe và Nhân Viên 
             return em.createQuery(
-                "SELECT td FROM TestDrive td JOIN FETCH td.customer JOIN FETCH td.car JOIN FETCH td.staff ORDER BY td.scheduledTime DESC", 
+                "SELECT td FROM TestDrive td JOIN FETCH td.customer JOIN FETCH td.car JOIN FETCH td.staff s JOIN FETCH s.branch ORDER BY td.scheduledTime DESC", 
                 TestDrive.class).getResultList();
         }
     }
@@ -27,9 +27,9 @@ public class TestDriveDaoImpl implements TestDriveDao {
             if (keyword == null || keyword.trim().isEmpty()) {
                 return findAll();
             }
-            String jpql = "SELECT td FROM TestDrive td JOIN FETCH td.customer c JOIN FETCH td.car car JOIN FETCH td.staff " +
+            String jpql = "SELECT td FROM TestDrive td JOIN FETCH td.customer c JOIN FETCH td.car car JOIN FETCH td.staff s JOIN FETCH s.branch " +
                           "WHERE LOWER(td.testDriveCode) LIKE LOWER(:kw) OR LOWER(c.fullName) LIKE LOWER(:kw) " +
-                          "OR LOWER(car.modelName) LIKE LOWER(:kw) ORDER BY td.scheduledTime DESC";
+                          "OR LOWER(car.carName) LIKE LOWER(:kw) ORDER BY td.scheduledTime DESC";
             TypedQuery<TestDrive> query = em.createQuery(jpql, TestDrive.class);
             query.setParameter("kw", "%" + keyword.trim() + "%");
             return query.getResultList();
@@ -39,7 +39,17 @@ public class TestDriveDaoImpl implements TestDriveDao {
     @Override
     public Optional<TestDrive> findById(Long id) {
         try (EntityManager em = JpaUtil.getEntityManager()) {
-            TestDrive td = em.find(TestDrive.class, id);
+            TestDrive td = em.createQuery(
+                            "SELECT td FROM TestDrive td " +
+                                    "JOIN FETCH td.customer " +
+                                    "JOIN FETCH td.car " +
+                                    "JOIN FETCH td.staff s " +
+                                    "JOIN FETCH s.branch " +
+                                    "WHERE td.id = :id", TestDrive.class)
+                    .setParameter("id", id)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
             return Optional.ofNullable(td);
         }
     }

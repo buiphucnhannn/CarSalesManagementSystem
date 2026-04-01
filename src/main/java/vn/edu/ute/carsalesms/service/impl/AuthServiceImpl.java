@@ -103,6 +103,7 @@ public class AuthServiceImpl implements AuthService {
     private AuthenticatedUser toAuthenticatedUser(Account account) {
         Staff staff = account.getStaff();
         String branchName = staff.getBranch() == null ? "N/A" : staff.getBranch().getBranchName();
+        Long branchId = staff.getBranch() == null ? null : staff.getBranch().getId();
         StaffRole role = staff.getRole();
         return new AuthenticatedUser(
                 account.getId(),
@@ -111,7 +112,8 @@ public class AuthServiceImpl implements AuthService {
                 staff.getFullName(),
                 account.getUsername(),
                 role,
-                branchName
+                branchName,
+                branchId
         );
     }
 }

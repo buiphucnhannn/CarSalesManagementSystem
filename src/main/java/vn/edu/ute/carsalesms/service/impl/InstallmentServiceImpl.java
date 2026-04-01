@@ -8,6 +8,7 @@ import vn.edu.ute.carsalesms.model.enums.InstallmentStatus;
 import vn.edu.ute.carsalesms.model.enums.PaymentMethod;
 import vn.edu.ute.carsalesms.service.InstallmentService;
 import vn.edu.ute.carsalesms.service.PaymentService;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +27,9 @@ public class InstallmentServiceImpl implements InstallmentService {
     @Override
     public List<InstallmentItem> findByOrderId(Long orderId) {
         List<InstallmentPlan> plans = installmentPlanDao.findByOrderId(orderId);
+        if (!plans.isEmpty()) {
+            assertPlanAccess(plans.get(0));
+        }
         
         // TỰ ĐỘNG CHỮA LÀNH KẾT TỦA DỮ LIỆU (Auto-Heal)
         // Những data cũ trên CSDL bị lưu lộn Status UNPAID dù Đã đóng đủ tiền.
@@ -51,6 +55,7 @@ public class InstallmentServiceImpl implements InstallmentService {
 
         InstallmentPlan currentPlan = installmentPlanDao.findById(installmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ hạn"));
+        assertPlanAccess(currentPlan);
 
         if (currentPlan.getInstallmentStatus() == InstallmentStatus.PAID) {
             throw new IllegalStateException("Kỳ hạn này đã được thanh toán đủ.");
@@ -186,5 +191,21 @@ public class InstallmentServiceImpl implements InstallmentService {
                 plan.getInstallmentStatus(),
                 plan.getNote()
         );
+    }
+
+    private void assertPlanAccess(InstallmentPlan plan) {
+        Long branchId = plan == null
+                || plan.getSaleOrder() == null
+                || plan.getSaleOrder().getStaff() == null
+                || plan.getSaleOrder().getStaff().getBranch() == null
+                ? null
+                : plan.getSaleOrder().getStaff().getBranch().getId();
+        String branchName = plan == null
+                || plan.getSaleOrder() == null
+                || plan.getSaleOrder().getStaff() == null
+                || plan.getSaleOrder().getStaff().getBranch() == null
+                ? null
+                : plan.getSaleOrder().getStaff().getBranch().getBranchName();
+        CurrentSession.assertBranchAccess(branchId, branchName);
     }
 }

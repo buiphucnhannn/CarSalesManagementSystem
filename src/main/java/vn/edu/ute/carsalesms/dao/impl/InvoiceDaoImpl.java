@@ -58,6 +58,7 @@ public class InvoiceDaoImpl implements InvoiceDao {
         EntityManager em = JpaUtil.getEntityManager();
         try {
             String qlString = "SELECT i FROM Invoice i JOIN FETCH i.saleOrder o JOIN FETCH o.customer c " +
+                              "JOIN FETCH o.staff st JOIN FETCH st.branch b " +
                               "WHERE :kw IS NULL OR LOWER(i.invoiceCode) LIKE :kw " +
                               "OR LOWER(o.orderCode) LIKE :kw OR LOWER(c.fullName) LIKE :kw " +
                               "ORDER BY i.issuedDate DESC";

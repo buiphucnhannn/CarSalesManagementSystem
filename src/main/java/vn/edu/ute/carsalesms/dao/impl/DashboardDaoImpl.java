@@ -112,7 +112,7 @@ public class DashboardDaoImpl implements DashboardDao {
     }
 
     @Override
-    public List<DashboardTaskItem> findUpcomingTestDriveTasksByStaff(Long staffId, LocalDateTime from, int limit) {
+    public List<DashboardTaskItem> findUpcomingTestDriveTasksByStaff(Long staffId, LocalDateTime from, LocalDateTime to, int limit) {
         EntityManager entityManager = JpaUtil.getEntityManager();
         try {
             return entityManager.createQuery(
@@ -120,11 +120,12 @@ public class DashboardDaoImpl implements DashboardDao {
                                     "from TestDrive td " +
                                     "join td.customer c " +
                                     "join td.car car " +
-                                    "where td.staff.id = :staffId and td.status = :status and td.scheduledTime >= :from " +
+                                    "where td.staff.id = :staffId and td.status = :status and td.scheduledTime >= :from and td.scheduledTime < :to " +
                                     "order by td.scheduledTime asc", Object[].class)
                     .setParameter("staffId", staffId)
                     .setParameter("status", TestDriveStatus.SCHEDULED)
                     .setParameter("from", from)
+                    .setParameter("to", to)
                     .setMaxResults(limit)
                     .getResultStream()
                     .map(row -> new DashboardTaskItem(

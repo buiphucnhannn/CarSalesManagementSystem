@@ -10,6 +10,7 @@ import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.WarrantyStatus;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.WarrantyService;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -40,11 +41,17 @@ public class WarrantyServiceImpl implements WarrantyService {
         // (Auto-Migrate Legacy PAID Orders)
         List<SaleOrder> legacyOrders = saleOrderDao.findOrders(null, OrderStatus.PAID);
         for (SaleOrder order : legacyOrders) {
+             if (!canAccessOrder(order)) {
+                 continue;
+             }
              generateWarrantyForOrder(order.getId());
         }
 
         // --- 2. XỬ LÝ GỐC VÀ CẬP NHẬT TRẠNG THÁI HẾT HẠN NGẦM ---
         List<Warranty> lists = warrantyDao.findByKeyword(keyword);
+        if (!CurrentSession.isAdmin()) {
+            lists = lists.stream().filter(this::canAccessWarranty).collect(Collectors.toList());
+        }
         LocalDate now = LocalDate.now();
         
         for (Warranty w : lists) {
@@ -62,6 +69,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     public void generateWarrantyForOrder(Long saleOrderId) {
         SaleOrder order = saleOrderDao.findById(saleOrderId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Đơn bán để kích hoạt Bảo hành."));
+        assertOrderAccess(order);
 
         if (order.getOrderStatus() != OrderStatus.PAID) {
             throw new IllegalStateException("Đơn Hàng chưa thanh toán, Không được Kích hoạt Bảo hành.");
@@ -97,6 +105,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     public void addNoteToWarranty(Long warrantyId, String note) {
         Warranty w = warrantyDao.findById(warrantyId)
                 .orElseThrow(() -> new IllegalArgumentException("Thẻ bảo hành không tồn tại."));
+        assertWarrantyAccess(w);
         String oldNote = w.getNote() != null ? w.getNote() : "";
         w.setNote(oldNote + " | " + LocalDate.now() + ": " + note);
         Warranty updated = warrantyDao.update(w);
@@ -115,5 +124,61 @@ public class WarrantyServiceImpl implements WarrantyService {
                 w.getWarrantyStatus(),
                 w.getNote()
         );
+    }
+
+    private boolean canAccessOrder(SaleOrder order) {
+        if (CurrentSession.isAdmin()) {
+            return true;
+        }
+        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long orderBranchId = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
+                ? null
+                : order.getStaff().getBranch().getId();
+        return sessionBranchId == null || (orderBranchId != null && orderBranchId.equals(sessionBranchId));
+    }
+
+    private boolean canAccessWarranty(Warranty warranty) {
+        if (CurrentSession.isAdmin()) {
+            return true;
+        }
+        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long warrantyBranchId = resolveWarrantyBranchId(warranty);
+        return sessionBranchId == null || (warrantyBranchId != null && warrantyBranchId.equals(sessionBranchId));
+    }
+
+    private void assertOrderAccess(SaleOrder order) {
+        Long branchId = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
+                ? null
+                : order.getStaff().getBranch().getId();
+        String branchName = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
+                ? null
+                : order.getStaff().getBranch().getBranchName();
+        CurrentSession.assertBranchAccess(branchId, branchName);
+    }
+
+    private void assertWarrantyAccess(Warranty warranty) {
+        CurrentSession.assertBranchAccess(resolveWarrantyBranchId(warranty), resolveWarrantyBranchName(warranty));
+    }
+
+    private Long resolveWarrantyBranchId(Warranty warranty) {
+        if (warranty == null
+                || warranty.getSaleOrderDetail() == null
+                || warranty.getSaleOrderDetail().getSaleOrder() == null
+                || warranty.getSaleOrderDetail().getSaleOrder().getStaff() == null
+                || warranty.getSaleOrderDetail().getSaleOrder().getStaff().getBranch() == null) {
+            return null;
+        }
+        return warranty.getSaleOrderDetail().getSaleOrder().getStaff().getBranch().getId();
+    }
+
+    private String resolveWarrantyBranchName(Warranty warranty) {
+        if (warranty == null
+                || warranty.getSaleOrderDetail() == null
+                || warranty.getSaleOrderDetail().getSaleOrder() == null
+                || warranty.getSaleOrderDetail().getSaleOrder().getStaff() == null
+                || warranty.getSaleOrderDetail().getSaleOrder().getStaff().getBranch() == null) {
+            return null;
+        }
+        return warranty.getSaleOrderDetail().getSaleOrder().getStaff().getBranch().getBranchName();
     }
 }

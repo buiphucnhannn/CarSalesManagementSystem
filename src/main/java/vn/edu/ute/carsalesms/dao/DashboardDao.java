@@ -22,7 +22,7 @@ public interface DashboardDao {
 
     List<DashboardTaskItem> findOrderTasksByStaff(Long staffId, int limit);
 
-    List<DashboardTaskItem> findUpcomingTestDriveTasksByStaff(Long staffId, LocalDateTime from, int limit);
+    List<DashboardTaskItem> findUpcomingTestDriveTasksByStaff(Long staffId, LocalDateTime from, LocalDateTime to, int limit);
 
     BigDecimal sumCompletedPaymentsInRange(LocalDateTime from, LocalDateTime to);
 

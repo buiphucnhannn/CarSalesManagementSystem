@@ -27,7 +27,6 @@ import vn.edu.ute.carsalesms.controller.SaleOrderController;
 import vn.edu.ute.carsalesms.controller.PaymentController;
 import vn.edu.ute.carsalesms.controller.InstallmentController;
 import vn.edu.ute.carsalesms.controller.InvoiceController;
-import vn.edu.ute.carsalesms.controller.StatisticsController;
 import vn.edu.ute.carsalesms.dao.CarDao;
 import vn.edu.ute.carsalesms.dao.impl.CarDaoImpl;
 import vn.edu.ute.carsalesms.dao.impl.CustomerDaoImpl;
@@ -59,13 +58,12 @@ import vn.edu.ute.carsalesms.view.component.InstallmentPanel;
 import vn.edu.ute.carsalesms.view.component.InvoicePanel;
 import vn.edu.ute.carsalesms.view.component.SidebarMenuPanel;
 import vn.edu.ute.carsalesms.view.component.StatCardPanel;
-import vn.edu.ute.carsalesms.view.component.StatisticsPanel;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 import vn.edu.ute.carsalesms.view.theme.UiSizing;
 
 /**
  * Dashboard cho nhân viên bán hàng (STAFF).
- * Sidebar 10 modules theo phân quyền Staff.
+ * Sidebar theo phân quyền Staff (không có mục Thống kê).
  */
 public class StaffDashboardFrame extends JFrame {
 
@@ -78,22 +76,20 @@ public class StaffDashboardFrame extends JFrame {
     private static final String CARD_INSTALLMENTS = "installments";
     private static final String CARD_TESTDRIVES   = "testdrives";
     private static final String CARD_WARRANTIES   = "warranties";
-    private static final String CARD_STATISTICS   = "statistics";
 
     private record ModuleItem(String key, String title, String description) {
     }
 
     private static final List<ModuleItem> MODULE_ITEMS = List.of(
             new ModuleItem(CARD_OVERVIEW,     "Tổng quan", null),
-            new ModuleItem(CARD_CARS,         "Quản lý xe",     "F03: CRUD xe, hãng, loại xe; tìm kiếm nhanh."),
-            new ModuleItem(CARD_CUSTOMERS,    "Khách hàng",     "F04: CRUD khách hàng, lịch sử mua hàng."),
-            new ModuleItem(CARD_ORDERS,       "Đơn bán",        "F08: Tạo đơn bán hàng."),
-            new ModuleItem(CARD_PAYMENTS,     "Thanh toán",      "F09: Ghi nhận thanh toán."),
-            new ModuleItem(CARD_INVOICES,     "Hóa đơn",        "F10: Xuất hóa đơn."),
-            new ModuleItem(CARD_INSTALLMENTS, "Trả góp",        "F11: Theo dõi kế hoạch trả góp."),
-            new ModuleItem(CARD_TESTDRIVES,   "Lái thử",        "F12: Đặt lịch, cập nhật trạng thái lái thử."),
-            new ModuleItem(CARD_WARRANTIES,   "Bảo hành",       "F13: Tra cứu trạng thái bảo hành."),
-            new ModuleItem(CARD_STATISTICS,   "Thống kê",       "F14: Thống kê doanh thu cá nhân.")
+            new ModuleItem(CARD_CARS,         "Quản lý xe",     "F03: CRUD xe, hãng, loại xe; quản lý tồn kho và tìm kiếm nhanh."),
+            new ModuleItem(CARD_CUSTOMERS,    "Khách hàng",     "F04: CRUD khách hàng, theo dõi lịch sử mua hàng."),
+            new ModuleItem(CARD_ORDERS,       "Đơn bán",        "F08: Tạo đơn, dòng chi tiết, cập nhật trạng thái đơn hàng."),
+            new ModuleItem(CARD_PAYMENTS,     "Thanh toán",      "F09: Ghi nhận thanh toán (Cash/Bank/Installment)."),
+            new ModuleItem(CARD_INVOICES,     "Hóa đơn",        "F10: Xuất hóa đơn cho đơn hàng đã thanh toán."),
+            new ModuleItem(CARD_INSTALLMENTS, "Trả góp",        "F11: Kế hoạch trả góp, theo dõi các kỳ thanh toán."),
+            new ModuleItem(CARD_TESTDRIVES,   "Lái thử",        "F12: Đặt lịch, xác nhận và cập nhật trạng thái lái thử."),
+            new ModuleItem(CARD_WARRANTIES,   "Bảo hành",       "F13: Khởi tạo bảo hành, tra cứu trạng thái.")
     );
 
     private static final List<SidebarMenuPanel.MenuItem> STAFF_SIDEBAR_ITEMS = MODULE_ITEMS.stream()
@@ -103,15 +99,14 @@ public class StaffDashboardFrame extends JFrame {
     private final CardLayout contentCardLayout = new CardLayout();
     private final JPanel contentCards = new JPanel(contentCardLayout);
     private final Runnable onLogoutRequested;
+    private final DashboardService dashboardService;
     private final Long currentStaffId;
-    private final StaffOverviewData overviewData;
     private final CarManagementController carManagementController;
     private final CustomerManagementController customerManagementController;
     private final SaleOrderController saleOrderController;
     private final PaymentController paymentController;
     private final InstallmentController installmentController;
     private final InvoiceController invoiceController;
-    private final StatisticsController statisticsController;
 
     public StaffDashboardFrame() {
         this(null,
@@ -122,7 +117,6 @@ public class StaffDashboardFrame extends JFrame {
                 buildDefaultPaymentController(),
                 buildDefaultInstallmentController(),
                 buildDefaultInvoiceController(),
-                buildDefaultStatisticsController(),
                 () -> {
         });
     }
@@ -136,7 +130,6 @@ public class StaffDashboardFrame extends JFrame {
                 buildDefaultPaymentController(),
                 buildDefaultInstallmentController(),
                 buildDefaultInvoiceController(),
-                buildDefaultStatisticsController(),
                 onLogoutRequested);
     }
 
@@ -149,7 +142,6 @@ public class StaffDashboardFrame extends JFrame {
                 buildDefaultPaymentController(),
                 buildDefaultInstallmentController(),
                 buildDefaultInvoiceController(),
-                buildDefaultStatisticsController(),
                 onLogoutRequested);
     }
 
@@ -161,18 +153,16 @@ public class StaffDashboardFrame extends JFrame {
                                PaymentController paymentController,
                                InstallmentController installmentController,
                                InvoiceController invoiceController,
-                               StatisticsController statisticsController,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
+        this.dashboardService = dashboardService;
         this.currentStaffId = currentUser == null ? null : currentUser.staffId();
-        this.overviewData = loadOverviewData(dashboardService, currentUser);
         this.carManagementController = Objects.requireNonNull(carManagementController, "carManagementController is required");
         this.customerManagementController = Objects.requireNonNull(customerManagementController, "customerManagementController is required");
         this.saleOrderController = Objects.requireNonNull(saleOrderController, "saleOrderController is required");
         this.paymentController = Objects.requireNonNull(paymentController, "paymentController is required");
         this.installmentController = Objects.requireNonNull(installmentController, "installmentController is required");
         this.invoiceController = Objects.requireNonNull(invoiceController, "invoiceController is required");
-        this.statisticsController = Objects.requireNonNull(statisticsController, "statisticsController is required");
         setTitle("Car Sales Management - Staff Dashboard");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setMinimumSize(UiSizing.WINDOW_MIN_SIZE);
@@ -240,16 +230,13 @@ public class StaffDashboardFrame extends JFrame {
         return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl()));
     }
 
-    private static StatisticsController buildDefaultStatisticsController() {
-        return new StatisticsController(new vn.edu.ute.carsalesms.service.impl.StatisticsServiceImpl(new vn.edu.ute.carsalesms.dao.impl.StatisticsDaoImpl()));
-    }
 
-    private StaffOverviewData loadOverviewData(DashboardService dashboardService, AuthenticatedUser currentUser) {
-        if (dashboardService == null || currentUser == null || currentUser.staffId() == null) {
+    private StaffOverviewData loadOverviewData(DashboardService dashboardService, Long staffId) {
+        if (dashboardService == null || staffId == null) {
             return StaffOverviewData.empty();
         }
         try {
-            return dashboardService.getStaffOverview(currentUser.staffId());
+            return dashboardService.getStaffOverview(staffId);
         } catch (Exception ex) {
             return StaffOverviewData.empty();
         }
@@ -282,8 +269,7 @@ public class StaffDashboardFrame extends JFrame {
         addCardComponent(createInstallmentsPanel(), CARD_INSTALLMENTS);
         addCardComponent(createTestDrivesPanel(), CARD_TESTDRIVES);
         addCardComponent(createWarrantiesPanel(), CARD_WARRANTIES);
-        addCardComponent(createStatisticsPanel(), CARD_STATISTICS);
-        
+
         MODULE_ITEMS.stream()
                 .filter(item -> item.description() != null
                         && !CARD_CARS.equals(item.key())
@@ -293,8 +279,7 @@ public class StaffDashboardFrame extends JFrame {
                         && !CARD_INVOICES.equals(item.key())
                         && !CARD_INSTALLMENTS.equals(item.key())
                         && !CARD_TESTDRIVES.equals(item.key())
-                        && !CARD_WARRANTIES.equals(item.key())
-                        && !CARD_STATISTICS.equals(item.key()))
+                        && !CARD_WARRANTIES.equals(item.key()))
                 .forEach(item -> addCardComponent(createPlaceholderPanel(item.title(), item.description()), item.key()));
 
         contentCardLayout.show(contentCards, CARD_OVERVIEW);
@@ -308,6 +293,7 @@ public class StaffDashboardFrame extends JFrame {
 
 
     private JScrollPane createOverviewPanel() {
+        StaffOverviewData overviewData = loadOverviewData(dashboardService, currentStaffId);
         JPanel overview = new JPanel(new BorderLayout(0, 8));
         overview.setOpaque(true);
         overview.setBackground(UiPalette.APP_BACKGROUND);
@@ -322,9 +308,9 @@ public class StaffDashboardFrame extends JFrame {
         // Bảng công việc rộng (CENTER), lịch trình gọn bên phải (EAST)
         JPanel body = new JPanel(new BorderLayout(8, 0));
         body.setOpaque(false);
-        body.add(createTaskQueuePanel(), BorderLayout.CENTER);
+        body.add(createTaskQueuePanel(overviewData), BorderLayout.CENTER);
 
-        JPanel timelinePanel = createTimelinePanel();
+        JPanel timelinePanel = createTimelinePanel(overviewData);
         timelinePanel.setPreferredSize(new Dimension(180, 0));
         body.add(timelinePanel, BorderLayout.EAST);
 
@@ -337,7 +323,7 @@ public class StaffDashboardFrame extends JFrame {
         return scrollPane;
     }
 
-    private JPanel createTaskQueuePanel() {
+    private JPanel createTaskQueuePanel(StaffOverviewData overviewData) {
         JPanel card = createCard();
         card.setLayout(new BorderLayout(0, 8));
 
@@ -381,7 +367,7 @@ public class StaffDashboardFrame extends JFrame {
         return card;
     }
 
-    private JPanel createTimelinePanel() {
+    private JPanel createTimelinePanel(StaffOverviewData overviewData) {
         JPanel card = createCard();
         card.setLayout(new BorderLayout());
 
@@ -462,14 +448,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý xe");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý xe",
+                "Theo dõi xe, hãng xe và loại xe; hỗ trợ thêm/sửa/ngừng kinh doanh và tra cứu nhanh."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new CarManagementPanel(carManagementController, false), BorderLayout.CENTER);
@@ -480,14 +462,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý Khách hàng");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Khách hàng",
+                "Lưu trữ hồ sơ khách hàng, cập nhật thông tin liên hệ và hỗ trợ tra cứu lịch sử giao dịch."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new CustomerManagementPanel(customerManagementController), BorderLayout.CENTER);
@@ -498,14 +476,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Phân hệ Bán hàng (Đơn bán)");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Phân hệ Bán hàng (Đơn bán)",
+                "Tạo đơn bán, theo dõi trạng thái đơn và quản lý chi tiết các xe trong từng đơn hàng."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new SaleOrderPanel(saleOrderController), BorderLayout.CENTER);
@@ -516,14 +490,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Lịch sử & Ghi nhận Thanh toán");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Lịch sử & Ghi nhận Thanh toán",
+                "Ghi nhận các lần thanh toán, theo dõi dư nợ và kiểm soát tiến độ thu tiền theo đơn bán."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new PaymentPanel(saleOrderController, paymentController), BorderLayout.CENTER);
@@ -534,14 +504,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý Hóa đơn");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Hóa đơn",
+                "Tra cứu hóa đơn đã phát hành và xuất file PDF phục vụ đối soát, lưu trữ."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new InvoicePanel(invoiceController), BorderLayout.CENTER);
@@ -552,14 +518,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý Trả góp");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Trả góp",
+                "Theo dõi lịch trả góp, trạng thái từng kỳ và ghi nhận thanh toán cho hợp đồng trả góp."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new InstallmentPanel(installmentController, saleOrderController), BorderLayout.CENTER);
@@ -570,14 +532,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Đăng Ký Khách Lái Thử");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Lái thử",
+                "Lập lịch lái thử, phân công nhân viên phụ trách và theo dõi tiến độ xác nhận lịch hẹn."
+        );
 
         // Khởi tạo các Service
         vn.edu.ute.carsalesms.dao.TestDriveDao tDao = new vn.edu.ute.carsalesms.dao.impl.TestDriveDaoImpl();
@@ -596,14 +554,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Hồ Sơ Bảo Hành Tự Động 3 Năm");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Bảo hành",
+                "Tra cứu và cập nhật hồ sơ bảo hành theo xe, theo đơn bán và theo thời gian hiệu lực."
+        );
 
         vn.edu.ute.carsalesms.dao.WarrantyDao wDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
         vn.edu.ute.carsalesms.dao.SaleOrderDao oDao = new vn.edu.ute.carsalesms.dao.impl.SaleOrderDaoImpl();
@@ -613,28 +567,6 @@ public class StaffDashboardFrame extends JFrame {
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(wService), BorderLayout.CENTER);
-        return wrapper;
-    }
-
-    private JPanel createStatisticsPanel() {
-        if (currentStaffId == null) {
-            return createPlaceholderPanel("Thống kê", "Không xác định được nhân viên hiện tại để tải dữ liệu thống kê.");
-        }
-
-        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
-        wrapper.setOpaque(false);
-
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Thống kê");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
-
-        wrapper.add(headerCard, BorderLayout.NORTH);
-        wrapper.add(new StatisticsPanel(statisticsController, currentStaffId), BorderLayout.CENTER);
         return wrapper;
     }
 
@@ -668,6 +600,23 @@ public class StaffDashboardFrame extends JFrame {
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
         return panel;
+    }
+
+    private JPanel createModuleHeaderCard(String titleText, String descriptionText) {
+        JPanel card = createCard();
+        card.setLayout(new BorderLayout(0, 4));
+
+        JLabel title = new JLabel(titleText);
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+
+        JLabel desc = new JLabel(descriptionText);
+        desc.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        desc.setForeground(UiPalette.TEXT_SECONDARY);
+
+        card.add(title, BorderLayout.NORTH);
+        card.add(desc, BorderLayout.CENTER);
+        return card;
     }
 
     private void switchContent(String cardKey) {
@@ -704,7 +653,6 @@ public class StaffDashboardFrame extends JFrame {
             case CARD_INSTALLMENTS -> createInstallmentsPanel();
             case CARD_TESTDRIVES -> createTestDrivesPanel();
             case CARD_WARRANTIES -> createWarrantiesPanel();
-            case CARD_STATISTICS -> createStatisticsPanel();
             default -> MODULE_ITEMS.stream()
                     .filter(item -> item.key().equals(cardKey) && item.description() != null)
                     .findFirst()
