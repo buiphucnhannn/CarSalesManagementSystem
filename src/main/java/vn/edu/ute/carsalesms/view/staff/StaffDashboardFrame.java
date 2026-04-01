@@ -104,7 +104,8 @@ public class StaffDashboardFrame extends JFrame {
     private final JPanel contentCards = new JPanel(contentCardLayout);
     private final Runnable onLogoutRequested;
     private final Long currentStaffId;
-    private final StaffOverviewData overviewData;
+    private final DashboardService dashboardService;
+    private final AuthenticatedUser currentUser;
     private final CarManagementController carManagementController;
     private final CustomerManagementController customerManagementController;
     private final SaleOrderController saleOrderController;
@@ -113,45 +114,9 @@ public class StaffDashboardFrame extends JFrame {
     private final InvoiceController invoiceController;
     private final StatisticsController statisticsController;
 
-    public StaffDashboardFrame() {
-        this(null,
-                buildDefaultDashboardService(),
-                buildDefaultCarManagementController(),
-                buildDefaultCustomerManagementController(),
-                buildDefaultSaleOrderController(),
-                buildDefaultPaymentController(),
-                buildDefaultInstallmentController(),
-                buildDefaultInvoiceController(),
-                buildDefaultStatisticsController(),
-                () -> {
-        });
-    }
+    private StaffOverviewData overviewData;
 
-    public StaffDashboardFrame(Runnable onLogoutRequested) {
-        this(null,
-                buildDefaultDashboardService(),
-                buildDefaultCarManagementController(),
-                buildDefaultCustomerManagementController(),
-                buildDefaultSaleOrderController(),
-                buildDefaultPaymentController(),
-                buildDefaultInstallmentController(),
-                buildDefaultInvoiceController(),
-                buildDefaultStatisticsController(),
-                onLogoutRequested);
-    }
-
-    public StaffDashboardFrame(AuthenticatedUser currentUser, Runnable onLogoutRequested) {
-        this(currentUser,
-                buildDefaultDashboardService(),
-                buildDefaultCarManagementController(),
-                buildDefaultCustomerManagementController(),
-                buildDefaultSaleOrderController(),
-                buildDefaultPaymentController(),
-                buildDefaultInstallmentController(),
-                buildDefaultInvoiceController(),
-                buildDefaultStatisticsController(),
-                onLogoutRequested);
-    }
+    // Các Constructor Test/Rỗng đã bị gỡ bỏ để tránh gây lỗi Build và giúp luồng tập trung vào AppLauncher.
 
     public StaffDashboardFrame(AuthenticatedUser currentUser,
                                DashboardService dashboardService,
@@ -164,6 +129,8 @@ public class StaffDashboardFrame extends JFrame {
                                StatisticsController statisticsController,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
+        this.dashboardService = Objects.requireNonNull(dashboardService, "dashboardService is required");
+        this.currentUser = currentUser;
         this.currentStaffId = currentUser == null ? null : currentUser.staffId();
         this.overviewData = loadOverviewData(dashboardService, currentUser);
         this.carManagementController = Objects.requireNonNull(carManagementController, "carManagementController is required");
@@ -695,7 +662,10 @@ public class StaffDashboardFrame extends JFrame {
 
     private JComponent createCardByKey(String cardKey) {
         return switch (cardKey) {
-            case CARD_OVERVIEW -> createOverviewPanel();
+            case CARD_OVERVIEW -> {
+                this.overviewData = loadOverviewData(this.dashboardService, this.currentUser);
+                yield createOverviewPanel();
+            }
             case CARD_CARS -> createCarsPanel();
             case CARD_CUSTOMERS -> createCustomersPanel();
             case CARD_ORDERS -> createOrdersPanel();

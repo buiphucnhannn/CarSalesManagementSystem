@@ -37,7 +37,7 @@ public class PromotionServiceImpl implements PromotionService {
     @Override
     public void createPromotion(PromotionRequest req) {
         validateRequest(req);
-        
+
         // Kiểm tra xem mã đã tồn tại chưa ở database (Có thể bỏ qua phần này cho mục đích demo ngắn gọn
         // nhưng nên có xử lý catch Duplicate Key từ JPA, hoặc query. Tạm dùng try catch db).
         Promotion p = new Promotion(

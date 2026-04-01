@@ -53,7 +53,7 @@ public class WarrantyServiceImpl implements WarrantyService {
             lists = lists.stream().filter(this::canAccessWarranty).collect(Collectors.toList());
         }
         LocalDate now = LocalDate.now();
-        
+
         for (Warranty w : lists) {
             if (w.getWarrantyStatus() == WarrantyStatus.ACTIVE && w.getEndDate().isBefore(now)) {
                 w.setWarrantyStatus(WarrantyStatus.EXPIRED);
@@ -61,7 +61,7 @@ public class WarrantyServiceImpl implements WarrantyService {
                 auditLogService.log("EXPIRE", "WARRANTY", updated.getId(), "status=ACTIVE", "status=EXPIRED");
             }
         }
-        
+
         return lists.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
@@ -88,7 +88,7 @@ public class WarrantyServiceImpl implements WarrantyService {
                 nv.setEndDate(LocalDate.now().plusYears(3)); // Bảo hành 3 năm trọn Đời xe.
                 nv.setWarrantyStatus(WarrantyStatus.ACTIVE);
                 nv.setNote("Kích hoạt tự động khi Mua Xe qua hệ thống.");
-                
+
                 Warranty saved = warrantyDao.save(nv);
                 auditLogService.log(
                         "CREATE",

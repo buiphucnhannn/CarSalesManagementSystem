@@ -68,7 +68,7 @@ public class PaymentServiceImpl implements PaymentService {
         BigDecimal currentRemaining = order.getFinalAmount().subtract(totalPaidSoFar);
 
         // --- VALIDATION SỐ 1: Số tiền không được đóng vượt dư nợ (CẤM NGOẠI TRỪ TRẢ GÓP KỲ SAU) ---
-        // Tại sao ngoại trừ TRẢ GÓP (Installment): Vì lúc Trả Góp từng kỳ hệ thống tự bóc tách Lãi Phạt Trễ và Phạt Vượt Hạn để thêm vào Payment. Do đó Tổng Thu có Quyền Lớn Hơn Giá Xe (FinalAmount). 
+        // Tại sao ngoại trừ TRẢ GÓP (Installment): Vì lúc Trả Góp từng kỳ hệ thống tự bóc tách Lãi Phạt Trễ và Phạt Vượt Hạn để thêm vào Payment. Do đó Tổng Thu có Quyền Lớn Hơn Giá Xe (FinalAmount).
         if (request.paymentMethod() != PaymentMethod.INSTALLMENT && request.amount().compareTo(currentRemaining) > 0) {
             throw new IllegalArgumentException(String.format("Không hợp lệ! Vượt quá dư nợ tổng đơn (Bạn đang gõ đóng: %,.0f đ, trong khi Đơn chỉ cần trả: %,.0f đ)", request.amount(), currentRemaining));
         }
@@ -80,7 +80,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        // Nếu thanh toán qua giao diện Trả Góp (Method = INSTALLMENT từ InstallmentService dội sang) 
+        // Nếu thanh toán qua giao diện Trả Góp (Method = INSTALLMENT từ InstallmentService dội sang)
         // thì bỏ qua kiểm tra PAID (Chữa cháy cho Seed Data cũ thường hay set Order là PAID dù còn dư nợ).
         if (order.getOrderStatus() == OrderStatus.PAID && request.paymentMethod() != PaymentMethod.INSTALLMENT) {
             throw new IllegalStateException("Đơn đã thanh toán đầy đủ, không thể tạo thanh toán mới.");
@@ -104,11 +104,11 @@ public class PaymentServiceImpl implements PaymentService {
 
         // Sau khi lưu, tính tổng đã thanh toán
         BigDecimal totalPaid = paymentDao.sumCompletedByOrderId(order.getId());
-        
+
         // Kiểm tra logic Trả góp: Lần đầu tiên thanh toán nếu là INSTALLMENT thì tạo Plan
-        if (request.paymentMethod() == PaymentMethod.INSTALLMENT && 
+        if (request.paymentMethod() == PaymentMethod.INSTALLMENT &&
             request.installmentMonths() != null && request.installmentMonths() > 0) {
-            
+
             // Tìm thử xem đã có Plan nào chưa
             List<InstallmentPlan> existingPlans = installmentPlanDao.findByOrderId(order.getId());
             if (existingPlans.isEmpty()) {
@@ -119,25 +119,25 @@ public class PaymentServiceImpl implements PaymentService {
 
                     int months = request.installmentMonths();
                     BigDecimal perMonthAmount = remaining.divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP);
-                    
+
                     // Tạo danh sách Plan bằng Stream API
                     List<InstallmentPlan> newPlans = IntStream.rangeClosed(1, months)
                             .mapToObj(i -> {
-                                BigDecimal dueAmount = (i == months) ? 
+                                BigDecimal dueAmount = (i == months) ?
                                     remaining.subtract(perMonthAmount.multiply(BigDecimal.valueOf(months - 1))) : perMonthAmount;
-                                
+
                                 return new InstallmentPlan(
-                                        order, 
-                                        i, 
-                                        LocalDate.now().plusMonths(i), 
-                                        dueAmount, 
-                                        BigDecimal.ZERO, 
-                                        InstallmentStatus.UNPAID, 
+                                        order,
+                                        i,
+                                        LocalDate.now().plusMonths(i),
+                                        dueAmount,
+                                        BigDecimal.ZERO,
+                                        InstallmentStatus.UNPAID,
                                         "Tạo tự động"
                                 );
                             })
                             .collect(Collectors.toList());
-                    
+
                     installmentPlanDao.saveAll(newPlans);
                 }
             }
@@ -151,7 +151,7 @@ public class PaymentServiceImpl implements PaymentService {
         } else if (order.getOrderStatus() == OrderStatus.PENDING && totalPaid.compareTo(BigDecimal.ZERO) > 0) {
             order.setOrderStatus(OrderStatus.CONFIRMED);
         }
-        
+
         orderDao.save(order);
     }
 
