@@ -29,6 +29,7 @@ import vn.edu.ute.carsalesms.controller.PaymentController;
 import vn.edu.ute.carsalesms.controller.InstallmentController;
 import vn.edu.ute.carsalesms.controller.InvoiceController;
 import vn.edu.ute.carsalesms.controller.PromotionController;
+import vn.edu.ute.carsalesms.controller.StatisticsController;
 import vn.edu.ute.carsalesms.dao.CarDao;
 import vn.edu.ute.carsalesms.dao.impl.*;
 import vn.edu.ute.carsalesms.model.dto.AdminOverviewData;
@@ -48,6 +49,7 @@ import vn.edu.ute.carsalesms.view.component.PromotionPanel;
 import vn.edu.ute.carsalesms.view.component.SidebarMenuPanel;
 import vn.edu.ute.carsalesms.view.component.StaffManagementPanel;
 import vn.edu.ute.carsalesms.view.component.StatCardPanel;
+import vn.edu.ute.carsalesms.view.component.StatisticsPanel;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 import vn.edu.ute.carsalesms.view.theme.UiSizing;
 
@@ -111,24 +113,25 @@ public class AdminDashboardFrame extends JFrame {
     private final InstallmentController installmentController;
     private final InvoiceController invoiceController;
     private final PromotionController promotionController;
+    private final StatisticsController statisticsController;
     private final AuditLogController auditLogController;
 
     public AdminDashboardFrame() {
         this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
-                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), () -> {});
+                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), buildDefaultStatisticsController(), () -> {});
     }
 
     public AdminDashboardFrame(Runnable onLogoutRequested) {
         this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
-                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
+                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), buildDefaultStatisticsController(), onLogoutRequested);
     }
 
     public AdminDashboardFrame(AuthenticatedUser currentUser, Runnable onLogoutRequested) {
         this(currentUser, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
                 buildDefaultCustomerManagementController(), buildDefaultStaffManagementController(),
-                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), onLogoutRequested);
+                buildDefaultSaleOrderController(), buildDefaultPaymentController(), new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), null)), new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl())), new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl())), buildDefaultStatisticsController(), onLogoutRequested);
     }
 
     public AdminDashboardFrame(AuthenticatedUser currentUser,
@@ -142,6 +145,7 @@ public class AdminDashboardFrame extends JFrame {
                                InstallmentController installmentController,
                                InvoiceController invoiceController,
                                PromotionController promotionController,
+                               StatisticsController statisticsController,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
         this.overviewData = loadOverviewData(dashboardService);
@@ -154,6 +158,7 @@ public class AdminDashboardFrame extends JFrame {
         this.installmentController = Objects.requireNonNull(installmentController);
         this.invoiceController = Objects.requireNonNull(invoiceController);
         this.promotionController = Objects.requireNonNull(promotionController);
+        this.statisticsController = Objects.requireNonNull(statisticsController);
         this.auditLogController = buildDefaultAuditLogController();
         setTitle("Car Sales Management - Admin Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -217,6 +222,10 @@ public class AdminDashboardFrame extends JFrame {
         return new AuditLogController(new AuditLogServiceImpl(new AuditLogDaoImpl(), new StaffDaoImpl()));
     }
 
+    private static StatisticsController buildDefaultStatisticsController() {
+        return new StatisticsController(new StatisticsServiceImpl(new StatisticsDaoImpl()));
+    }
+
     private AdminOverviewData loadOverviewData(DashboardService dashboardService) {
         if (dashboardService == null) {
             return AdminOverviewData.empty();
@@ -256,6 +265,7 @@ public class AdminDashboardFrame extends JFrame {
         addCardComponent(createInstallmentsPanel(), CARD_INSTALLMENTS);
         addCardComponent(createInvoicesPanel(), CARD_INVOICES);
         addCardComponent(createPromotionsPanel(), CARD_PROMOTIONS);
+        addCardComponent(createStatisticsPanel(), CARD_STATISTICS);
         addCardComponent(createAuditLogPanel(), CARD_AUDITLOG);
         addCardComponent(createTestDrivesPanel(), CARD_TESTDRIVES);
         addCardComponent(createWarrantiesPanel(), CARD_WARRANTIES);
@@ -272,6 +282,7 @@ public class AdminDashboardFrame extends JFrame {
                         && !CARD_INSTALLMENTS.equals(item.key())
                         && !CARD_INVOICES.equals(item.key())
                         && !CARD_PROMOTIONS.equals(item.key())
+                        && !CARD_STATISTICS.equals(item.key())
                         && !CARD_AUDITLOG.equals(item.key())
                         && !CARD_TESTDRIVES.equals(item.key())
                         && !CARD_WARRANTIES.equals(item.key()))
@@ -464,6 +475,20 @@ public class AdminDashboardFrame extends JFrame {
         return wrapper;
     }
 
+    private JPanel createStatisticsPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createModuleHeaderCard(
+                "Thống kê",
+                "Báo cáo doanh thu theo thời gian, phân tích trạng thái đơn hàng, top xe bán chạy và hiệu quả chi nhánh."
+        );
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new StatisticsPanel(statisticsController, null), BorderLayout.CENTER);
+        return wrapper;
+    }
+
     private JPanel createRecentOrdersPanel() {
         JPanel container = createWhiteCard();
         container.setLayout(new BorderLayout(0, 8));
@@ -596,6 +621,7 @@ public class AdminDashboardFrame extends JFrame {
             case CARD_INSTALLMENTS -> createInstallmentsPanel();
             case CARD_INVOICES -> createInvoicesPanel();
             case CARD_PROMOTIONS -> createPromotionsPanel();
+            case CARD_STATISTICS -> createStatisticsPanel();
             case CARD_AUDITLOG -> createAuditLogPanel();
             case CARD_TESTDRIVES -> createTestDrivesPanel();
             case CARD_WARRANTIES -> createWarrantiesPanel();

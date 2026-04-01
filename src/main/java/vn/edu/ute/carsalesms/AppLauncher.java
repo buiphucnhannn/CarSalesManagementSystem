@@ -12,6 +12,7 @@ import vn.edu.ute.carsalesms.controller.PaymentController;
 import vn.edu.ute.carsalesms.controller.InstallmentController;
 import vn.edu.ute.carsalesms.controller.InvoiceController;
 import vn.edu.ute.carsalesms.controller.PromotionController;
+import vn.edu.ute.carsalesms.controller.StatisticsController;
 import vn.edu.ute.carsalesms.controller.StaffManagementController;
 import vn.edu.ute.carsalesms.dao.AccountDao;
 import vn.edu.ute.carsalesms.dao.BranchDao;
@@ -57,8 +58,9 @@ public class AppLauncher {
             InstallmentController installmentController = buildInstallmentController(auditLogService);
             InvoiceController invoiceController = buildInvoiceController(auditLogService);
             PromotionController promotionController = buildPromotionController(auditLogService);
+            StatisticsController statisticsController = buildStatisticsController();
             showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
-                    customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController);
+                    customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController, statisticsController);
         } catch (Exception e) {
             throw new IllegalStateException("Không thể khởi chạy ứng dụng", e);
         }
@@ -120,6 +122,10 @@ public class AppLauncher {
         return new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl()), auditLogService);
     }
 
+    private static StatisticsController buildStatisticsController() {
+        return new StatisticsController(new StatisticsServiceImpl(new StatisticsDaoImpl()));
+    }
+
     private static void showLoginFrame(AuthController authController,
                                        DashboardService dashboardService,
                                        CarManagementController carManagementController,
@@ -130,12 +136,13 @@ public class AppLauncher {
                                        PaymentController paymentController,
                                        InstallmentController installmentController,
                                        InvoiceController invoiceController,
-                                       PromotionController promotionController) {
+                                       PromotionController promotionController,
+                                       StatisticsController statisticsController) {
         LoginFrame loginFrame = new LoginFrame(
                 authController,
                 user -> openDashboardByRole(user, dashboardService, carManagementController,
                         branchManagementController,
-                        customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController)
+                        customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController, statisticsController)
         );
         loginFrame.setVisible(true);
     }
@@ -150,7 +157,8 @@ public class AppLauncher {
                                             PaymentController paymentController,
                                             InstallmentController installmentController,
                                             InvoiceController invoiceController,
-                                            PromotionController promotionController) {
+                                            PromotionController promotionController,
+                                            StatisticsController statisticsController) {
         JFrame dashboard;
         if (user.role() == StaffRole.ADMIN) {
             JFrame[] frameRef = new JFrame[1];
@@ -167,6 +175,7 @@ public class AppLauncher {
                     installmentController,
                     invoiceController,
                     promotionController,
+                    statisticsController,
                     () -> logoutAndBackToLogin(frameRef[0])
             );
             dashboard = frameRef[0];
@@ -181,6 +190,7 @@ public class AppLauncher {
                     paymentController,
                     installmentController,
                     invoiceController,
+                    statisticsController,
                     () -> logoutAndBackToLogin(frameRef[0])
             );
             dashboard = frameRef[0];
@@ -215,7 +225,8 @@ public class AppLauncher {
         InstallmentController installmentController = buildInstallmentController(auditLogService);
         InvoiceController invoiceController = buildInvoiceController(auditLogService);
         PromotionController promotionController = buildPromotionController(auditLogService);
+        StatisticsController statisticsController = buildStatisticsController();
         showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
-                customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController);
+                customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController, statisticsController);
     }
 }
