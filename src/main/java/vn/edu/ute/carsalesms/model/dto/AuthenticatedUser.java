@@ -9,7 +9,8 @@ public record AuthenticatedUser(
 		String fullName,
 		String username,
 		StaffRole role,
-		String branchName
+		String branchName,
+		Long branchId
 ) {
 }
 

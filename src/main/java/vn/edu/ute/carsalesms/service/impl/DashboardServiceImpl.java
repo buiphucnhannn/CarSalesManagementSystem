@@ -40,7 +40,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         List<DashboardTaskItem> taskItems = Stream.concat(
                         dashboardDao.findOrderTasksByStaff(staffId, STAFF_TASK_LIMIT).stream(),
-                        dashboardDao.findUpcomingTestDriveTasksByStaff(staffId, startOfDay, STAFF_TASK_LIMIT).stream())
+                        dashboardDao.findUpcomingTestDriveTasksByStaff(staffId, startOfDay, endOfDay, STAFF_TASK_LIMIT).stream())
                 .sorted(Comparator.comparing(DashboardTaskItem::dueAt, Comparator.nullsLast(LocalDateTime::compareTo)))
                 .limit(STAFF_TASK_LIMIT)
                 .toList();

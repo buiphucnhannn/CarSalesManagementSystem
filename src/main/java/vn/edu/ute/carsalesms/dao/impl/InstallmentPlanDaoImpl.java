@@ -14,7 +14,7 @@ public class InstallmentPlanDaoImpl implements InstallmentPlanDao {
     public List<InstallmentPlan> findByOrderId(Long orderId) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
-            return em.createQuery("SELECT ip FROM InstallmentPlan ip JOIN FETCH ip.saleOrder o JOIN FETCH o.customer c WHERE o.id = :orderId ORDER BY ip.installmentNo ASC", InstallmentPlan.class)
+            return em.createQuery("SELECT ip FROM InstallmentPlan ip JOIN FETCH ip.saleOrder o JOIN FETCH o.customer c JOIN FETCH o.staff s JOIN FETCH s.branch b WHERE o.id = :orderId ORDER BY ip.installmentNo ASC", InstallmentPlan.class)
                     .setParameter("orderId", orderId)
                     .getResultList();
         } finally {
@@ -26,7 +26,16 @@ public class InstallmentPlanDaoImpl implements InstallmentPlanDao {
     public Optional<InstallmentPlan> findById(Long planId) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
-            InstallmentPlan ip = em.find(InstallmentPlan.class, planId);
+            InstallmentPlan ip = em.createQuery(
+                            "SELECT ip FROM InstallmentPlan ip " +
+                                    "JOIN FETCH ip.saleOrder o " +
+                                    "JOIN FETCH o.staff s " +
+                                    "JOIN FETCH s.branch b " +
+                                    "WHERE ip.id = :planId", InstallmentPlan.class)
+                    .setParameter("planId", planId)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
             return Optional.ofNullable(ip);
         } finally {
             em.close();

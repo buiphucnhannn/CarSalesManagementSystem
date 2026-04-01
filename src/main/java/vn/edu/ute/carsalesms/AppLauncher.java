@@ -190,7 +190,6 @@ public class AppLauncher {
                     paymentController,
                     installmentController,
                     invoiceController,
-                    statisticsController,
                     () -> logoutAndBackToLogin(frameRef[0])
             );
             dashboard = frameRef[0];

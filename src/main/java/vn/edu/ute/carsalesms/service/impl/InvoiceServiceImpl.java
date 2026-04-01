@@ -5,6 +5,7 @@ import vn.edu.ute.carsalesms.model.dto.InvoiceItem;
 import vn.edu.ute.carsalesms.model.entity.Invoice;
 import vn.edu.ute.carsalesms.service.InvoicePdfExporter;
 import vn.edu.ute.carsalesms.service.InvoiceService;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -23,6 +24,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     public List<InvoiceItem> findAllInvoices(String keyword) {
         return invoiceDao.findAll(keyword).stream()
+                .filter(this::canAccessInvoice)
                 .map(this::mapToItem)
                 .collect(Collectors.toList());
     }
@@ -31,8 +33,45 @@ public class InvoiceServiceImpl implements InvoiceService {
     public void exportInvoicePdf(Long invoiceId, Path outputPath) {
         Invoice invoice = invoiceDao.findByIdWithOrderDetails(invoiceId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dữ liệu hóa đơn để in."));
+        assertInvoiceAccess(invoice);
 
         invoicePdfExporter.export(invoice, outputPath);
+    }
+
+    private boolean canAccessInvoice(Invoice invoice) {
+        if (CurrentSession.isAdmin()) {
+            return true;
+        }
+        Long sessionBranchId = CurrentSession.currentBranchId();
+        if (sessionBranchId == null) {
+            return true;
+        }
+        Long invoiceBranchId = resolveBranchId(invoice);
+        return invoiceBranchId != null && sessionBranchId.equals(invoiceBranchId);
+    }
+
+    private void assertInvoiceAccess(Invoice invoice) {
+        CurrentSession.assertBranchAccess(resolveBranchId(invoice), resolveBranchName(invoice));
+    }
+
+    private Long resolveBranchId(Invoice invoice) {
+        if (invoice == null
+                || invoice.getSaleOrder() == null
+                || invoice.getSaleOrder().getStaff() == null
+                || invoice.getSaleOrder().getStaff().getBranch() == null) {
+            return null;
+        }
+        return invoice.getSaleOrder().getStaff().getBranch().getId();
+    }
+
+    private String resolveBranchName(Invoice invoice) {
+        if (invoice == null
+                || invoice.getSaleOrder() == null
+                || invoice.getSaleOrder().getStaff() == null
+                || invoice.getSaleOrder().getStaff().getBranch() == null) {
+            return null;
+        }
+        return invoice.getSaleOrder().getStaff().getBranch().getBranchName();
     }
 
     private InvoiceItem mapToItem(Invoice i) {

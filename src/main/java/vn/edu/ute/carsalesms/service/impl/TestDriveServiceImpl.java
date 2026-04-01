@@ -13,6 +13,7 @@ import vn.edu.ute.carsalesms.model.entity.TestDrive;
 import vn.edu.ute.carsalesms.model.enums.TestDriveStatus;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.TestDriveService;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 
 import java.util.List;
 import java.util.UUID;
@@ -44,7 +45,16 @@ public class TestDriveServiceImpl implements TestDriveService {
 
     @Override
     public List<TestDriveItem> findByKeyword(String keyword) {
-        return testDriveDao.findByKeyword(keyword)
+        List<TestDrive> drives = testDriveDao.findByKeyword(keyword);
+        if (!CurrentSession.isAdmin()) {
+            Long sessionBranchId = CurrentSession.currentBranchId();
+            if (sessionBranchId != null) {
+                drives = drives.stream()
+                        .filter(this::canAccessTestDrive)
+                        .collect(Collectors.toList());
+            }
+        }
+        return drives
                 .stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -62,6 +72,11 @@ public class TestDriveServiceImpl implements TestDriveService {
                 .orElseThrow(() -> new IllegalArgumentException("Xe không tồn tại."));
         Staff staff = staffDao.findStaffById(req.staffId())
                 .orElseThrow(() -> new IllegalArgumentException("Nhân viên tư vấn không tồn tại."));
+        assertBranchAccess(car.getBranch() == null ? null : car.getBranch().getId(), car.getBranch() == null ? null : car.getBranch().getBranchName());
+        assertBranchAccess(staff.getBranch() == null ? null : staff.getBranch().getId(), staff.getBranch() == null ? null : staff.getBranch().getBranchName());
+        if (car.getBranch() != null && staff.getBranch() != null && !car.getBranch().getId().equals(staff.getBranch().getId())) {
+            throw new IllegalStateException("Bạn không có quyền để tác động đến chi nhánh '" + car.getBranch().getBranchName() + "'.");
+        }
 
         String code = "TD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
@@ -90,6 +105,7 @@ public class TestDriveServiceImpl implements TestDriveService {
     public void updateResult(Long id, TestDriveStatus status, String result) {
         TestDrive td = testDriveDao.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Phiếu hẹn lái thử không tồn tại."));
+        assertTestDriveAccess(td);
         
         td.setStatus(status);
         td.setResult(result);
@@ -107,6 +123,7 @@ public class TestDriveServiceImpl implements TestDriveService {
     public void cancelTestDrive(Long id, String reason) {
         TestDrive td = testDriveDao.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Phiếu hẹn lái thử không tồn tại."));
+        assertTestDriveAccess(td);
         td.setStatus(TestDriveStatus.CANCELLED);
         td.setNote(reason);
         TestDrive updated = testDriveDao.update(td);
@@ -131,5 +148,27 @@ public class TestDriveServiceImpl implements TestDriveService {
                 td.getStatus(),
                 td.getNote()
         );
+    }
+
+    private boolean canAccessTestDrive(TestDrive td) {
+        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long targetBranchId = td == null || td.getStaff() == null || td.getStaff().getBranch() == null
+                ? null
+                : td.getStaff().getBranch().getId();
+        return targetBranchId != null && targetBranchId.equals(sessionBranchId);
+    }
+
+    private void assertTestDriveAccess(TestDrive td) {
+        Long branchId = td == null || td.getStaff() == null || td.getStaff().getBranch() == null
+                ? null
+                : td.getStaff().getBranch().getId();
+        String branchName = td == null || td.getStaff() == null || td.getStaff().getBranch() == null
+                ? null
+                : td.getStaff().getBranch().getBranchName();
+        assertBranchAccess(branchId, branchName);
+    }
+
+    private void assertBranchAccess(Long branchId, String branchName) {
+        CurrentSession.assertBranchAccess(branchId, branchName);
     }
 }

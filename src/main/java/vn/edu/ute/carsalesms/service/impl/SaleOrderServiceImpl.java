@@ -6,6 +6,7 @@ import vn.edu.ute.carsalesms.model.entity.*;
 import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.SaleOrderService;
+import vn.edu.ute.carsalesms.session.CurrentSession;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -36,6 +37,14 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     @Override
     public List<SaleOrderItem> findOrders(String keyword, OrderStatus statusFilter) {
         List<SaleOrder> orders = orderDao.findOrders(keyword, statusFilter);
+        if (!CurrentSession.isAdmin()) {
+            Long sessionBranchId = CurrentSession.currentBranchId();
+            if (sessionBranchId != null) {
+                orders = orders.stream()
+                        .filter(order -> resolveOrderBranchId(order) != null && sessionBranchId.equals(resolveOrderBranchId(order)))
+                        .toList();
+            }
+        }
         return orders.stream()
                 .map(this::mapToItem)
                 .collect(Collectors.toList());
@@ -43,6 +52,9 @@ public class SaleOrderServiceImpl implements SaleOrderService {
 
     @Override
     public List<SaleOrderDetailItem> findDetailsByOrderId(Long orderId) {
+        SaleOrder order = orderDao.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn bán."));
+        assertOrderAccess(order);
         return orderDao.findDetailsByOrderId(orderId).stream()
                 .map(d -> new SaleOrderDetailItem(
                         d.getId(),
@@ -59,6 +71,8 @@ public class SaleOrderServiceImpl implements SaleOrderService {
 
     @Override
     public SaleOrderMetadata loadMetadata() {
+        Long sessionBranchId = CurrentSession.currentBranchId();
+
         // Lấy KH
         List<CarLookupItem> customers = customerDao.findCustomers(null).stream()
                 .map(c -> new CarLookupItem(c.getId(), c.getCustomerCode(), c.getFullName()))
@@ -66,6 +80,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
 
         // Lấy Staff (ACTIVE)
         List<CarLookupItem> staffs = staffDao.findStaffs(null, Status.ACTIVE).stream()
+                .filter(s -> CurrentSession.isAdmin() || (s.getBranch() != null && sessionBranchId != null && sessionBranchId.equals(s.getBranch().getId())))
                 .map(s -> new CarLookupItem(s.getId(), s.getStaffCode(), s.getFullName()))
                 .collect(Collectors.toList());
 
@@ -77,6 +92,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         // Lấy Các Xe đang bán còn hàng (avail > 0)
         List<CarLookupItem> cars = carDao.findCars(null, Status.ACTIVE).stream()
                 .filter(c -> c.getAvailableQuantity() > 0)
+                .filter(c -> CurrentSession.isAdmin() || (c.getBranch() != null && sessionBranchId != null && sessionBranchId.equals(c.getBranch().getId())))
                 .map(c -> new CarLookupItem(c.getId(), c.getCarCode(), c.getCarName() + " - " + c.getColor() + " (" + c.getSalePrice() + ")"))
                 .collect(Collectors.toList());
 
@@ -94,6 +110,10 @@ public class SaleOrderServiceImpl implements SaleOrderService {
                 .orElseThrow(() -> new IllegalArgumentException("Khách hàng không tồn tại."));
         Staff staff = staffDao.findStaffById(request.staffId())
                 .orElseThrow(() -> new IllegalArgumentException("Nhân viên duyệt đơn không tồn tại."));
+        CurrentSession.assertBranchAccess(
+                staff.getBranch() == null ? null : staff.getBranch().getId(),
+                staff.getBranch() == null ? null : staff.getBranch().getBranchName()
+        );
         
         Promotion promo = null;
         if (request.promotionId() != null) {
@@ -126,6 +146,14 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         for (OrderDetailRequest detailReq : request.details()) {
             Car car = carDao.findById(detailReq.carId())
                     .orElseThrow(() -> new IllegalArgumentException("Xe không tồn tại."));
+            CurrentSession.assertBranchAccess(
+                    car.getBranch() == null ? null : car.getBranch().getId(),
+                    car.getBranch() == null ? null : car.getBranch().getBranchName()
+            );
+            if (staff.getBranch() != null && car.getBranch() != null
+                    && !staff.getBranch().getId().equals(car.getBranch().getId())) {
+                throw new IllegalStateException("Bạn không có quyền để tác động đến chi nhánh '" + car.getBranch().getBranchName() + "'.");
+            }
 
             if (car.getAvailableQuantity() < detailReq.quantity()) {
                 throw new IllegalStateException("Số lượng xe " + car.getCarCode() + " trong kho chỉ còn " + car.getAvailableQuantity() + " chiếc.");
@@ -183,6 +211,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     public void cancelOrder(Long orderId) {
         SaleOrder order = orderDao.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn bán với ID = " + orderId));
+        assertOrderAccess(order);
 
         if (order.getOrderStatus() == OrderStatus.CANCELLED) {
             throw new IllegalStateException("Đơn hàng này đã được huỷ từ trước.");
@@ -224,5 +253,23 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         // Sinh mã SO- random
         String uuidPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         return "SO-" + uuidPart;
+    }
+
+    private void assertOrderAccess(SaleOrder order) {
+        CurrentSession.assertBranchAccess(resolveOrderBranchId(order), resolveOrderBranchName(order));
+    }
+
+    private Long resolveOrderBranchId(SaleOrder order) {
+        if (order == null || order.getStaff() == null || order.getStaff().getBranch() == null) {
+            return null;
+        }
+        return order.getStaff().getBranch().getId();
+    }
+
+    private String resolveOrderBranchName(SaleOrder order) {
+        if (order == null || order.getStaff() == null || order.getStaff().getBranch() == null) {
+            return null;
+        }
+        return order.getStaff().getBranch().getBranchName();
     }
 }

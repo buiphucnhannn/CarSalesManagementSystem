@@ -16,7 +16,7 @@ public class WarrantyDaoImpl implements WarrantyDao {
     public List<Warranty> findAll() {
         try (EntityManager em = JpaUtil.getEntityManager()) {
             return em.createQuery(
-                "SELECT w FROM Warranty w JOIN FETCH w.saleOrderDetail sod JOIN FETCH sod.saleOrder o JOIN FETCH o.customer c JOIN FETCH sod.car car ORDER BY w.endDate DESC", 
+                "SELECT w FROM Warranty w JOIN FETCH w.saleOrderDetail sod JOIN FETCH sod.saleOrder o JOIN FETCH o.customer c JOIN FETCH o.staff st JOIN FETCH st.branch b JOIN FETCH sod.car car ORDER BY w.endDate DESC", 
                 Warranty.class).getResultList();
         }
     }
@@ -27,11 +27,11 @@ public class WarrantyDaoImpl implements WarrantyDao {
             if (keyword == null || keyword.trim().isEmpty()) {
                 return findAll();
             }
-            String jpql = "SELECT w FROM Warranty w JOIN FETCH w.saleOrderDetail sod JOIN FETCH sod.saleOrder o JOIN FETCH o.customer c JOIN FETCH sod.car car " +
+            String jpql = "SELECT w FROM Warranty w JOIN FETCH w.saleOrderDetail sod JOIN FETCH sod.saleOrder o JOIN FETCH o.customer c JOIN FETCH o.staff st JOIN FETCH st.branch b JOIN FETCH sod.car car " +
                           "WHERE LOWER(w.warrantyCode) LIKE LOWER(:kw) " +
                           "OR LOWER(c.fullName) LIKE LOWER(:kw) " +
-                          "OR LOWER(car.modelName) LIKE LOWER(:kw) " +
-                          "OR LOWER(sod.vin) LIKE LOWER(:kw) " +
+                          "OR LOWER(car.carName) LIKE LOWER(:kw) " +
+                          "OR LOWER(o.orderCode) LIKE LOWER(:kw) " +
                           "ORDER BY w.endDate DESC";
             TypedQuery<Warranty> query = em.createQuery(jpql, Warranty.class);
             query.setParameter("kw", "%" + keyword.trim() + "%");
@@ -42,7 +42,18 @@ public class WarrantyDaoImpl implements WarrantyDao {
     @Override
     public Optional<Warranty> findById(Long id) {
         try (EntityManager em = JpaUtil.getEntityManager()) {
-            Warranty w = em.find(Warranty.class, id);
+            Warranty w = em.createQuery(
+                            "SELECT w FROM Warranty w " +
+                                    "JOIN FETCH w.saleOrderDetail sod " +
+                                    "JOIN FETCH sod.saleOrder o " +
+                                    "JOIN FETCH o.staff st " +
+                                    "JOIN FETCH st.branch b " +
+                                    "JOIN FETCH sod.car car " +
+                                    "WHERE w.id = :id", Warranty.class)
+                    .setParameter("id", id)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
             return Optional.ofNullable(w);
         }
     }
