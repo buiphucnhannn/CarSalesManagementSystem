@@ -226,7 +226,8 @@ public class InstallmentPanel extends JPanel {
             return;
         }
 
-        String suggestedAmount = p.getDueRemaining().max(BigDecimal.ZERO).stripTrailingZeros().toPlainString();
+        // Làm tròn thành số nguyên, loại bỏ các chữ số thập phân gây lỗi khi người dùng submit
+        String suggestedAmount = p.getDueRemaining().max(BigDecimal.ZERO).setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
         String input = (String) JOptionPane.showInputDialog(getDialogParent(),
                 "Nhập số tiền đóng cho kỳ " + p.installmentNo() + " (còn nợ "
                         + String.format("%,.0f đ", p.getDueRemaining().max(BigDecimal.ZERO)) + "):",
