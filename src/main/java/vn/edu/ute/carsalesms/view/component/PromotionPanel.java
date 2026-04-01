@@ -4,6 +4,7 @@ import vn.edu.ute.carsalesms.controller.PromotionController;
 import vn.edu.ute.carsalesms.model.dto.PromotionItem;
 import vn.edu.ute.carsalesms.model.dto.PromotionRequest;
 import vn.edu.ute.carsalesms.model.enums.Status;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -97,7 +98,7 @@ public class PromotionPanel extends JPanel {
         btnToggle.addActionListener(e -> {
             PromotionItem item = getSelectedItem();
             if (item != null) {
-                int confirm = JOptionPane.showConfirmDialog(this,
+                int confirm = JOptionPane.showConfirmDialog(getDialogParent(),
                         "Đổi trạng thái chương trình [" + item.promotionCode() + "]?",
                         "Xác nhận", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
@@ -156,7 +157,7 @@ public class PromotionPanel extends JPanel {
     }
 
     private void showDialog(PromotionItem editItem) {
-        PromotionDialog dialog = new PromotionDialog(SwingUtilities.getWindowAncestor(this), editItem);
+        PromotionDialog dialog = new PromotionDialog(getDialogWindow(), editItem);
         dialog.setVisible(true);
 
         dialog.getResult().ifPresent(req -> {
@@ -215,11 +216,24 @@ public class PromotionPanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
     
     private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        return owner != null ? owner : this;
+    }
+
+    private Window getDialogWindow() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        if (owner instanceof Window) {
+            return (Window) owner;
+        }
+        return SwingUtilities.getWindowAncestor(owner);
     }
 
     // =========================================================================
@@ -298,21 +312,21 @@ public class PromotionPanel extends JPanel {
                     );
                     dispose();
                 } catch (DateTimeParseException dte) {
-                    JOptionPane.showMessageDialog(this, "Định dạng ngày phải là dd/MM/yyyy", "Lỗi ngày tháng", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Định dạng ngày phải là dd/MM/yyyy", "Lỗi ngày tháng", JOptionPane.ERROR_MESSAGE);
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Dữ liệu nhập sai: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Dữ liệu nhập sai: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
             });
 
-            actions.add(btnCancel);
             actions.add(btnSubmit);
+            actions.add(btnCancel);
 
             setLayout(new BorderLayout());
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);
 
             setSize(450, 480);
-            setLocationRelativeTo(owner);
+            setLocationRelativeTo(DialogUiUtil.appDialogParent(owner));
         }
 
         public Optional<PromotionRequest> getResult() {

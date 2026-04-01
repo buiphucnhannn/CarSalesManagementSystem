@@ -10,6 +10,7 @@ import vn.edu.ute.carsalesms.model.entity.Customer;
 import vn.edu.ute.carsalesms.model.entity.Staff;
 import vn.edu.ute.carsalesms.model.enums.TestDriveStatus;
 import vn.edu.ute.carsalesms.service.TestDriveService;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -106,7 +107,7 @@ public class TestDrivePanel extends JPanel {
                     showError("Phiếu lái này đã kết thúc, không thể Khách hủy!");
                     return;
                 }
-                String reason = JOptionPane.showInputDialog(this, "Nhập lý do Khách hủy lịch:", "Báo Hủy", JOptionPane.QUESTION_MESSAGE);
+                String reason = JOptionPane.showInputDialog(getDialogParent(), "Nhập lý do Khách hủy lịch:", "Báo Hủy", JOptionPane.QUESTION_MESSAGE);
                 if (reason != null && !reason.trim().isEmpty()) {
                     testDriveService.cancelTestDrive(item.id(), "Lý do hủy: " + reason);
                     showInfo("Đã xác nhận hủy lịch.");
@@ -158,7 +159,7 @@ public class TestDrivePanel extends JPanel {
     }
 
     private void showBookDialog() {
-        TestDriveDialog dialog = new TestDriveDialog(SwingUtilities.getWindowAncestor(this), customerDao, carDao, staffDao);
+        TestDriveDialog dialog = new TestDriveDialog(getDialogWindow(), customerDao, carDao, staffDao);
         dialog.setVisible(true);
 
         dialog.getResult().ifPresent(req -> {
@@ -191,7 +192,7 @@ public class TestDrivePanel extends JPanel {
         JTextField txtResult = new JTextField();
         p.add(txtResult);
         
-        int r = JOptionPane.showConfirmDialog(this, p, "Ghi nhận Chuyến Lái Thử", JOptionPane.OK_CANCEL_OPTION);
+        int r = JOptionPane.showConfirmDialog(getDialogParent(), p, "Ghi nhận Chuyến Lái Thử", JOptionPane.OK_CANCEL_OPTION);
         if (r == JOptionPane.OK_OPTION) {
             try {
                 testDriveService.updateResult(item.id(), (TestDriveStatus) cbStatus.getSelectedItem(), txtResult.getText());
@@ -243,11 +244,24 @@ public class TestDrivePanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
     
     private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        return owner != null ? owner : this;
+    }
+
+    private Window getDialogWindow() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        if (owner instanceof Window) {
+            return (Window) owner;
+        }
+        return SwingUtilities.getWindowAncestor(owner);
     }
 
     // =========================================================================
@@ -302,21 +316,21 @@ public class TestDrivePanel extends JPanel {
                     result = new TestDriveRequest(cust.id, car.id, staff.id, time, txtDesc.getText());
                     dispose();
                 } catch (DateTimeParseException dte) {
-                    JOptionPane.showMessageDialog(this, "Định dạng lịch báo không khớp chuẩn (VD: 30/04/2026 14:00)", "Cảnh Báo AI", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Định dạng lịch báo không khớp chuẩn (VD: 30/04/2026 14:00)", "Cảnh Báo AI", JOptionPane.ERROR_MESSAGE);
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Lỗi Input: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Lỗi Input: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
             });
 
-            actions.add(btnCancel);
             actions.add(btnSubmit);
+            actions.add(btnCancel);
 
             setLayout(new BorderLayout());
             add(form, BorderLayout.CENTER);
             add(actions, BorderLayout.SOUTH);
 
             setSize(500, 380);
-            setLocationRelativeTo(owner);
+            setLocationRelativeTo(DialogUiUtil.appDialogParent(owner));
         }
 
         public Optional<TestDriveRequest> getResult() {

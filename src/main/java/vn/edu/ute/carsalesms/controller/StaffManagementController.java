@@ -6,7 +6,9 @@ import vn.edu.ute.carsalesms.model.dto.StaffCommandRequest;
 import vn.edu.ute.carsalesms.model.dto.StaffItem;
 import vn.edu.ute.carsalesms.model.dto.StaffManagementMetadata;
 import vn.edu.ute.carsalesms.model.enums.Status;
+import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.StaffService;
+import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
 
 import java.util.List;
 import java.util.Objects;
@@ -20,9 +22,15 @@ public class StaffManagementController {
 
     /** Service được inject qua constructor. */
     private final StaffService staffService;
+    private final AuditLogService auditLogService;
 
     public StaffManagementController(StaffService staffService) {
+        this(staffService, new NoOpAuditLogService());
+    }
+
+    public StaffManagementController(StaffService staffService, AuditLogService auditLogService) {
         this.staffService = Objects.requireNonNull(staffService, "staffService is required");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService is required");
     }
 
     // ─── Staff ───────────────────────────────────────────────────────────
@@ -56,14 +64,18 @@ public class StaffManagementController {
      * Thêm mới nhân viên.
      */
     public StaffItem createStaff(StaffCommandRequest request) {
-        return staffService.createStaff(request);
+        StaffItem created = staffService.createStaff(request);
+        auditLogService.log("CREATE", "STAFF", created.id(), null, request.toString());
+        return created;
     }
 
     /**
      * Cập nhật thông tin nhân viên.
      */
     public StaffItem updateStaff(StaffCommandRequest request) {
-        return staffService.updateStaff(request);
+        StaffItem updated = staffService.updateStaff(request);
+        auditLogService.log("UPDATE", "STAFF", updated.id(), null, request.toString());
+        return updated;
     }
 
     // ─── Account ─────────────────────────────────────────────────────────
@@ -82,14 +94,18 @@ public class StaffManagementController {
      * Tạo tài khoản mới cho một nhân viên.
      */
     public AccountItem createAccount(AccountCommandRequest request) {
-        return staffService.createAccount(request);
+        AccountItem created = staffService.createAccount(request);
+        auditLogService.log("CREATE", "ACCOUNT", created.id(), null, request.toString());
+        return created;
     }
 
     /**
      * Cập nhật tài khoản (username / mật khẩu / trạng thái).
      */
     public AccountItem updateAccount(AccountCommandRequest request) {
-        return staffService.updateAccount(request);
+        AccountItem updated = staffService.updateAccount(request);
+        auditLogService.log("UPDATE", "ACCOUNT", updated.id(), null, request.toString());
+        return updated;
     }
 
     /**
@@ -99,7 +115,9 @@ public class StaffManagementController {
      * @return AccountItem đã cập nhật trạng thái khóa
      */
     public AccountItem toggleLock(Long accountId) {
-        return staffService.toggleLock(accountId);
+        AccountItem updated = staffService.toggleLock(accountId);
+        auditLogService.log("TOGGLE_LOCK", "ACCOUNT", updated.id(), null, "locked=" + updated.locked());
+        return updated;
     }
 
     /**
@@ -109,5 +127,6 @@ public class StaffManagementController {
      */
     public void deleteAccount(Long accountId) {
         staffService.deleteAccount(accountId);
+        auditLogService.log("DELETE", "ACCOUNT", accountId, null, null);
     }
 }

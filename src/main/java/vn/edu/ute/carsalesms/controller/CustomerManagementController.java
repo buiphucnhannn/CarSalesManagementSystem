@@ -2,7 +2,9 @@ package vn.edu.ute.carsalesms.controller;
 
 import vn.edu.ute.carsalesms.model.dto.CustomerCommandRequest;
 import vn.edu.ute.carsalesms.model.dto.CustomerItem;
+import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.CustomerService;
+import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,9 +18,15 @@ public class CustomerManagementController {
 
     /** Service được inject qua constructor – Dependency Inversion. */
     private final CustomerService customerService;
+    private final AuditLogService auditLogService;
 
     public CustomerManagementController(CustomerService customerService) {
+        this(customerService, new NoOpAuditLogService());
+    }
+
+    public CustomerManagementController(CustomerService customerService, AuditLogService auditLogService) {
         this.customerService = Objects.requireNonNull(customerService, "customerService is required");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService is required");
     }
 
     /**
@@ -42,7 +50,9 @@ public class CustomerManagementController {
      * @return CustomerItem đã tạo
      */
     public CustomerItem createCustomer(CustomerCommandRequest request) {
-        return customerService.createCustomer(request);
+        CustomerItem created = customerService.createCustomer(request);
+        auditLogService.log("CREATE", "CUSTOMER", created.id(), null, request.toString());
+        return created;
     }
 
     /**
@@ -52,7 +62,9 @@ public class CustomerManagementController {
      * @return CustomerItem đã cập nhật
      */
     public CustomerItem updateCustomer(CustomerCommandRequest request) {
-        return customerService.updateCustomer(request);
+        CustomerItem updated = customerService.updateCustomer(request);
+        auditLogService.log("UPDATE", "CUSTOMER", updated.id(), null, request.toString());
+        return updated;
     }
 
     /**
@@ -62,5 +74,6 @@ public class CustomerManagementController {
      */
     public void deleteCustomer(Long customerId) {
         customerService.deleteCustomer(customerId);
+        auditLogService.log("DELETE", "CUSTOMER", customerId, null, null);
     }
 }

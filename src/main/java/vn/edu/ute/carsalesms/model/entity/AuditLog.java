@@ -3,6 +3,7 @@ package vn.edu.ute.carsalesms.model.entity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Entity đại diện cho bảng audit_logs.
@@ -11,6 +12,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "audit_logs")
 public class AuditLog {
+
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,7 +42,7 @@ public class AuditLog {
     @Column(name = "new_value", columnDefinition = "TEXT")
     private String newValue;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     public AuditLog() {
@@ -109,6 +112,17 @@ public class AuditLog {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now(VIETNAM_ZONE);
+        }
     }
 
     @Override

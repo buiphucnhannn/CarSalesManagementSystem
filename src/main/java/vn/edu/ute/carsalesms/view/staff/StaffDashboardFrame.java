@@ -2,6 +2,7 @@ package vn.edu.ute.carsalesms.view.staff;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -14,6 +15,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -257,16 +259,15 @@ public class StaffDashboardFrame extends JFrame {
         contentCards.setOpaque(false);
         contentCards.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
 
-        contentCards.add(createOverviewPanel(), CARD_OVERVIEW);
-        contentCards.add(createCarsPanel(), CARD_CARS);
-        contentCards.add(createCustomersPanel(), CARD_CUSTOMERS);
-        contentCards.add(createOrdersPanel(), CARD_ORDERS);
-        contentCards.add(createPaymentsPanel(), CARD_PAYMENTS);
-        contentCards.add(createInvoicesPanel(), CARD_INVOICES);
-        contentCards.add(createInstallmentsPanel(), CARD_INSTALLMENTS);
-        contentCards.add(createInstallmentsPanel(), CARD_INSTALLMENTS);
-        contentCards.add(createTestDrivesPanel(), CARD_TESTDRIVES);
-        contentCards.add(createWarrantiesPanel(), CARD_WARRANTIES);
+        addCardComponent(createOverviewPanel(), CARD_OVERVIEW);
+        addCardComponent(createCarsPanel(), CARD_CARS);
+        addCardComponent(createCustomersPanel(), CARD_CUSTOMERS);
+        addCardComponent(createOrdersPanel(), CARD_ORDERS);
+        addCardComponent(createPaymentsPanel(), CARD_PAYMENTS);
+        addCardComponent(createInvoicesPanel(), CARD_INVOICES);
+        addCardComponent(createInstallmentsPanel(), CARD_INSTALLMENTS);
+        addCardComponent(createTestDrivesPanel(), CARD_TESTDRIVES);
+        addCardComponent(createWarrantiesPanel(), CARD_WARRANTIES);
         
         MODULE_ITEMS.stream()
                 .filter(item -> item.description() != null
@@ -278,13 +279,15 @@ public class StaffDashboardFrame extends JFrame {
                         && !CARD_INSTALLMENTS.equals(item.key())
                         && !CARD_TESTDRIVES.equals(item.key())
                         && !CARD_WARRANTIES.equals(item.key()))
-                .forEach(item -> contentCards.add(
-                        createPlaceholderPanel(item.title(), item.description()),
-                        item.key()
-                ));
+                .forEach(item -> addCardComponent(createPlaceholderPanel(item.title(), item.description()), item.key()));
 
         contentCardLayout.show(contentCards, CARD_OVERVIEW);
         return contentCards;
+    }
+
+    private void addCardComponent(JComponent card, String key) {
+        card.setName(key);
+        contentCards.add(card, key);
     }
 
 
@@ -565,7 +568,8 @@ public class StaffDashboardFrame extends JFrame {
         vn.edu.ute.carsalesms.dao.CustomerDao cDao = new vn.edu.ute.carsalesms.dao.impl.CustomerDaoImpl();
         vn.edu.ute.carsalesms.dao.CarDao carDao = new vn.edu.ute.carsalesms.dao.impl.CarDaoImpl();
         vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
-        vn.edu.ute.carsalesms.service.TestDriveService tService = new vn.edu.ute.carsalesms.service.impl.TestDriveServiceImpl(tDao, cDao, carDao, sDao);
+        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
+        vn.edu.ute.carsalesms.service.TestDriveService tService = new vn.edu.ute.carsalesms.service.impl.TestDriveServiceImpl(tDao, cDao, carDao, sDao, auditService);
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(tService, cDao, carDao, sDao), BorderLayout.CENTER);
@@ -587,7 +591,9 @@ public class StaffDashboardFrame extends JFrame {
 
         vn.edu.ute.carsalesms.dao.WarrantyDao wDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
         vn.edu.ute.carsalesms.dao.SaleOrderDao oDao = new vn.edu.ute.carsalesms.dao.impl.SaleOrderDaoImpl();
-        vn.edu.ute.carsalesms.service.WarrantyService wService = new vn.edu.ute.carsalesms.service.impl.WarrantyServiceImpl(wDao, oDao);
+        vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
+        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
+        vn.edu.ute.carsalesms.service.WarrantyService wService = new vn.edu.ute.carsalesms.service.impl.WarrantyServiceImpl(wDao, oDao, auditService);
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(wService), BorderLayout.CENTER);
@@ -627,6 +633,44 @@ public class StaffDashboardFrame extends JFrame {
     }
 
     private void switchContent(String cardKey) {
+        refreshCardByKey(cardKey);
         contentCardLayout.show(contentCards, cardKey);
+        contentCards.revalidate();
+        contentCards.repaint();
+    }
+
+    private void refreshCardByKey(String cardKey) {
+        JComponent refreshed = createCardByKey(cardKey);
+        if (refreshed == null) {
+            return;
+        }
+
+        for (Component c : contentCards.getComponents()) {
+            if (cardKey.equals(c.getName())) {
+                contentCards.remove(c);
+                break;
+            }
+        }
+
+        addCardComponent(refreshed, cardKey);
+    }
+
+    private JComponent createCardByKey(String cardKey) {
+        return switch (cardKey) {
+            case CARD_OVERVIEW -> createOverviewPanel();
+            case CARD_CARS -> createCarsPanel();
+            case CARD_CUSTOMERS -> createCustomersPanel();
+            case CARD_ORDERS -> createOrdersPanel();
+            case CARD_PAYMENTS -> createPaymentsPanel();
+            case CARD_INVOICES -> createInvoicesPanel();
+            case CARD_INSTALLMENTS -> createInstallmentsPanel();
+            case CARD_TESTDRIVES -> createTestDrivesPanel();
+            case CARD_WARRANTIES -> createWarrantiesPanel();
+            default -> MODULE_ITEMS.stream()
+                    .filter(item -> item.key().equals(cardKey) && item.description() != null)
+                    .findFirst()
+                    .map(item -> createPlaceholderPanel(item.title(), item.description()))
+                    .orElse(null);
+        };
     }
 }

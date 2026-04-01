@@ -4,6 +4,7 @@ import vn.edu.ute.carsalesms.controller.SaleOrderController;
 import vn.edu.ute.carsalesms.model.dto.*;
 import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.PaymentMethod;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -45,8 +46,6 @@ public class SaleOrderPanel extends JPanel {
     private final JTable table;
     private final TableRowSorter<DefaultTableModel> sorter;
     private List<SaleOrderItem> rows = new ArrayList<>();
-
-    private SaleOrderMetadata metadata = SaleOrderMetadata.empty();
 
     public SaleOrderPanel(SaleOrderController controller) {
         this.controller = Objects.requireNonNull(controller, "controller is required");
@@ -155,12 +154,12 @@ public class SaleOrderPanel extends JPanel {
         }
     }
 
-    private void reloadMetadata() {
+    private SaleOrderMetadata reloadMetadata() {
         try {
-            metadata = controller.loadMetadata();
+            return controller.loadMetadata();
         } catch (Exception ex) {
-            metadata = SaleOrderMetadata.empty();
             showError("Không tải được dữ liệu danh mục tạo đơn.");
+            return SaleOrderMetadata.empty();
         }
     }
 
@@ -177,7 +176,7 @@ public class SaleOrderPanel extends JPanel {
             try {
                 List<SaleOrderDetailItem> details = controller.findDetailsByOrderId(order.id());
                 SaleOrderDetailDialog dialog = new SaleOrderDetailDialog(
-                        SwingUtilities.getWindowAncestor(this), order, details);
+                        getDialogParent(), order, details);
                 dialog.setVisible(true);
             } catch (Exception ex) {
                 showError("Lỗi lấy chi tiết đơn: " + ex.getMessage());
@@ -196,7 +195,7 @@ public class SaleOrderPanel extends JPanel {
                 return;
             }
 
-            int confirm = JOptionPane.showConfirmDialog(this,
+            int confirm = JOptionPane.showConfirmDialog(getDialogParent(),
                     "Bạn có chắc chắn muốn huỷ đơn hàng " + order.orderCode() + " không?\n" +
                     "Số lượng xe sẽ được tự động hoàn trả về kho.",
                     "Xác nhận huỷ đơn", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -213,11 +212,11 @@ public class SaleOrderPanel extends JPanel {
     }
 
     private void showCreateOrderDialog() {
-        reloadMetadata();
+        SaleOrderMetadata metadata = reloadMetadata();
         // Giả sử có 1 staff đang login (trong hệ thống thực là session)
         // Hiện tại ta cho chọn Staff ở metadata cho đơn giản (phù hợp quản lý cứng)
         SaleOrderCreateDialog dialog = new SaleOrderCreateDialog(
-                SwingUtilities.getWindowAncestor(this), metadata);
+                getDialogParent(), metadata);
         dialog.setVisible(true);
 
         dialog.getResult().ifPresent(req -> {
@@ -294,19 +293,24 @@ public class SaleOrderPanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
 
     private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        return owner != null ? owner : this;
     }
 
     // =========================================================================
     // Dialog Xem chi tiết đơn
     // =========================================================================
     private static final class SaleOrderDetailDialog extends JDialog {
-        private SaleOrderDetailDialog(Window owner, SaleOrderItem order, List<SaleOrderDetailItem> details) {
-            super(owner, "Chi tiết đơn hàng " + order.orderCode(), ModalityType.APPLICATION_MODAL);
+        private SaleOrderDetailDialog(Component owner, SaleOrderItem order, List<SaleOrderDetailItem> details) {
+            super(resolveOwnerWindow(owner), "Chi tiết đơn hàng " + order.orderCode(), ModalityType.APPLICATION_MODAL);
             setLayout(new BorderLayout(8, 8));
 
             // Info Header
@@ -353,14 +357,19 @@ public class SaleOrderPanel extends JPanel {
             setSize(600, 400);
             setLocationRelativeTo(owner);
         }
+
+        private static Window resolveOwnerWindow(Component owner) {
+            if (owner instanceof Window) {
+                return (Window) owner;
+            }
+            return owner == null ? null : SwingUtilities.getWindowAncestor(owner);
+        }
     }
 
     // =========================================================================
     // Dialog Tạo Đơn (Form phức tạp)
     // =========================================================================
     private static final class SaleOrderCreateDialog extends JDialog {
-        private final SaleOrderMetadata metadata;
-
         private final JComboBox<CarLookupItem> cbCustomer = new JComboBox<>();
         private final JComboBox<CarLookupItem> cbStaff = new JComboBox<>();
         private final JComboBox<CarLookupItem> cbPromo = new JComboBox<>();
@@ -376,9 +385,8 @@ public class SaleOrderPanel extends JPanel {
 
         private CreateOrderRequest result;
 
-        private SaleOrderCreateDialog(Window owner, SaleOrderMetadata metadata) {
-            super(owner, "Tạo đơn bán hàng", ModalityType.APPLICATION_MODAL);
-            this.metadata = metadata;
+        private SaleOrderCreateDialog(Component owner, SaleOrderMetadata metadata) {
+            super(resolveOwnerWindow(owner), "Tạo đơn bán hàng", ModalityType.APPLICATION_MODAL);
 
             setLayout(new BorderLayout());
 
@@ -457,8 +465,8 @@ public class SaleOrderPanel extends JPanel {
             btnCancel.addActionListener(e -> dispose());
             btnSave.addActionListener(e -> submitOrder());
 
-            p.add(btnCancel);
             p.add(btnSave);
+            p.add(btnCancel);
             return p;
         }
 
@@ -528,7 +536,7 @@ public class SaleOrderPanel extends JPanel {
 
         private void submitOrder() {
             if (cart.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng chọn xe vào đơn hàng.", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Vui lòng chọn xe vào đơn hàng.", "Lỗi", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -538,7 +546,7 @@ public class SaleOrderPanel extends JPanel {
             PaymentMethod pm = (PaymentMethod) cbPaymentMethod.getSelectedItem();
 
             if (cust == null || staff == null) {
-                JOptionPane.showMessageDialog(this, "Thiếu thông tin khách hàng / nhân viên.", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Thiếu thông tin khách hàng / nhân viên.", "Lỗi", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -555,6 +563,13 @@ public class SaleOrderPanel extends JPanel {
 
         public Optional<CreateOrderRequest> getResult() {
             return Optional.ofNullable(result);
+        }
+
+        private static Window resolveOwnerWindow(Component owner) {
+            if (owner instanceof Window) {
+                return (Window) owner;
+            }
+            return owner == null ? null : SwingUtilities.getWindowAncestor(owner);
         }
     }
 }

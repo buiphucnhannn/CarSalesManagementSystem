@@ -2,6 +2,7 @@ package vn.edu.ute.carsalesms.view.component;
 
 import vn.edu.ute.carsalesms.controller.InvoiceController;
 import vn.edu.ute.carsalesms.model.dto.InvoiceItem;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -166,7 +167,7 @@ public class InvoicePanel extends JPanel {
     }
 
     private Component getDialogParent() {
-        Window owner = SwingUtilities.getWindowAncestor(this);
+        Component owner = DialogUiUtil.appDialogParent(this);
         return owner != null ? owner : this;
     }
 }

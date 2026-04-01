@@ -5,6 +5,7 @@ import vn.edu.ute.carsalesms.model.dto.BranchCommandRequest;
 import vn.edu.ute.carsalesms.model.dto.BranchItem;
 import vn.edu.ute.carsalesms.model.dto.BranchSalesReportItem;
 import vn.edu.ute.carsalesms.model.enums.Status;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.BorderFactory;
@@ -135,8 +136,16 @@ public class BranchManagementPanel extends JPanel {
     }
 
     private Component getDialogParent() {
-        Window owner = SwingUtilities.getWindowAncestor(this);
+        Component owner = DialogUiUtil.appDialogParent(this);
         return owner != null ? owner : this;
+    }
+
+    private Window getDialogWindow() {
+        Component owner = getDialogParent();
+        if (owner instanceof Window) {
+            return (Window) owner;
+        }
+        return SwingUtilities.getWindowAncestor(owner);
     }
 
     private final class BranchTabPanel extends JPanel {
@@ -271,7 +280,7 @@ public class BranchManagementPanel extends JPanel {
 
         private void showEditor(BranchItem existing) {
             BranchEditorDialog dialog = new BranchEditorDialog(
-                    SwingUtilities.getWindowAncestor(this),
+                    getDialogWindow(),
                     existing);
             dialog.setVisible(true);
 
@@ -566,13 +575,13 @@ public class BranchManagementPanel extends JPanel {
 
         private void onSave() {
             if (codeField.getText().isBlank()) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng nhập mã chi nhánh.",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             if (nameField.getText().isBlank()) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng nhập tên chi nhánh.",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;

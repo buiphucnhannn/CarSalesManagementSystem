@@ -8,6 +8,7 @@ import vn.edu.ute.carsalesms.model.entity.SaleOrderDetail;
 import vn.edu.ute.carsalesms.model.entity.Warranty;
 import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.WarrantyStatus;
+import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.WarrantyService;
 
 import java.time.LocalDate;
@@ -19,10 +20,18 @@ public class WarrantyServiceImpl implements WarrantyService {
 
     private final WarrantyDao warrantyDao;
     private final SaleOrderDao saleOrderDao; // Lấy List OrderDetail để sinh warranty
+    private final AuditLogService auditLogService;
 
     public WarrantyServiceImpl(WarrantyDao warrantyDao, SaleOrderDao saleOrderDao) {
+        this(warrantyDao, saleOrderDao, new NoOpAuditLogService());
+    }
+
+    public WarrantyServiceImpl(WarrantyDao warrantyDao,
+                               SaleOrderDao saleOrderDao,
+                               AuditLogService auditLogService) {
         this.warrantyDao = warrantyDao;
         this.saleOrderDao = saleOrderDao;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -41,7 +50,8 @@ public class WarrantyServiceImpl implements WarrantyService {
         for (Warranty w : lists) {
             if (w.getWarrantyStatus() == WarrantyStatus.ACTIVE && w.getEndDate().isBefore(now)) {
                 w.setWarrantyStatus(WarrantyStatus.EXPIRED);
-                warrantyDao.update(w);
+                Warranty updated = warrantyDao.update(w);
+                auditLogService.log("EXPIRE", "WARRANTY", updated.getId(), "status=ACTIVE", "status=EXPIRED");
             }
         }
         
@@ -71,7 +81,14 @@ public class WarrantyServiceImpl implements WarrantyService {
                 nv.setWarrantyStatus(WarrantyStatus.ACTIVE);
                 nv.setNote("Kích hoạt tự động khi Mua Xe qua hệ thống.");
                 
-                warrantyDao.save(nv);
+                Warranty saved = warrantyDao.save(nv);
+                auditLogService.log(
+                        "CREATE",
+                        "WARRANTY",
+                        saved.getId(),
+                        null,
+                        "saleOrderId=" + saleOrderId + ", saleOrderDetailId=" + sod.getId() + ", code=" + saved.getWarrantyCode()
+                );
             }
         }
     }
@@ -81,8 +98,9 @@ public class WarrantyServiceImpl implements WarrantyService {
         Warranty w = warrantyDao.findById(warrantyId)
                 .orElseThrow(() -> new IllegalArgumentException("Thẻ bảo hành không tồn tại."));
         String oldNote = w.getNote() != null ? w.getNote() : "";
-        w.setNote(oldNote + " | " + LocalDate.now().toString() + ": " + note);
-        warrantyDao.update(w);
+        w.setNote(oldNote + " | " + LocalDate.now() + ": " + note);
+        Warranty updated = warrantyDao.update(w);
+        auditLogService.log("UPDATE_NOTE", "WARRANTY", updated.getId(), oldNote, updated.getNote());
     }
 
     private WarrantyItem mapToDto(Warranty w) {

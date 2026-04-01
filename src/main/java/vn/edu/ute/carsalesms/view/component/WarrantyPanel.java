@@ -3,6 +3,7 @@ package vn.edu.ute.carsalesms.view.component;
 import vn.edu.ute.carsalesms.model.dto.WarrantyItem;
 import vn.edu.ute.carsalesms.model.enums.WarrantyStatus;
 import vn.edu.ute.carsalesms.service.WarrantyService;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -125,7 +126,7 @@ public class WarrantyPanel extends JPanel {
                     showError("Thẻ Hết Hạn 3 Năm! Khách phải tự trả tiền Gara!");
                     return;
                 }
-                String note = JOptionPane.showInputDialog(this,
+                String note = JOptionPane.showInputDialog(getDialogParent(),
                         "Nhập nội dung Sửa/Thay đồ (Ví dụ: Thay bugi, vệ sinh buồng đốt):", "Bảo dưỡng kỳ",
                         JOptionPane.PLAIN_MESSAGE);
                 if (note != null && !note.trim().isEmpty()) {
@@ -185,11 +186,12 @@ public class WarrantyPanel extends JPanel {
      */
     private void showWarrantyDetailDialog(WarrantyItem item) {
         // Tìm Frame cha để dialog hiện đúng vị trí trung tâm
-        Window owner = SwingUtilities.getWindowAncestor(this);
+        Component parent = getDialogParent();
+        Window owner = parent instanceof Window w ? w : SwingUtilities.getWindowAncestor(parent);
         JDialog dialog = new JDialog(owner instanceof Frame ? (Frame) owner : null,
                 "Chi Tiết Sổ Bảo Hành", true);
         dialog.setSize(560, 520);
-        dialog.setLocationRelativeTo(this);
+        dialog.setLocationRelativeTo(parent);
         dialog.setResizable(false);
 
         // Panel gốc chứa toàn bộ nội dung
@@ -407,10 +409,15 @@ public class WarrantyPanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
 
     private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        return owner != null ? owner : this;
     }
 }

@@ -4,6 +4,7 @@ import vn.edu.ute.carsalesms.controller.CustomerManagementController;
 import vn.edu.ute.carsalesms.model.dto.CustomerCommandRequest;
 import vn.edu.ute.carsalesms.model.dto.CustomerItem;
 import vn.edu.ute.carsalesms.model.enums.Gender;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -202,7 +203,7 @@ public class CustomerManagementPanel extends JPanel {
     private void showEditor(CustomerItem existing) {
         String nextCode = existing == null ? controller.loadNextCustomerCode() : null;
         CustomerEditorDialog dialog = new CustomerEditorDialog(
-                SwingUtilities.getWindowAncestor(this), existing, nextCode);
+                getDialogWindow(), existing, nextCode);
         dialog.setVisible(true);
 
         // Nếu người dùng nhấn Lưu thì dialog trả về request
@@ -229,7 +230,7 @@ public class CustomerManagementPanel extends JPanel {
      */
     private void deleteCustomer(CustomerItem item) {
         int confirm = JOptionPane.showConfirmDialog(
-                this,
+                getDialogParent(),
                 "Xác nhận xóa khách hàng: " + item.fullName() + " (" + item.customerCode() + ")?\n" +
                 "Lưu ý: không thể xóa nếu khách hàng có đơn hàng liên quan.",
                 "Xác nhận xóa",
@@ -351,11 +352,24 @@ public class CustomerManagementPanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
 
     private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        return owner != null ? owner : this;
+    }
+
+    private Window getDialogWindow() {
+        Component owner = getDialogParent();
+        if (owner instanceof Window) {
+            return (Window) owner;
+        }
+        return SwingUtilities.getWindowAncestor(owner);
     }
 
     // ─── Inner Dialog ─────────────────────────────────────────────────────
@@ -473,7 +487,7 @@ public class CustomerManagementPanel extends JPanel {
             if (codeField.getText().isBlank() ||
                     fullNameField.getText().isBlank() ||
                     phoneField.getText().isBlank()) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng điền đủ các trường bắt buộc (*).",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -486,7 +500,7 @@ public class CustomerManagementPanel extends JPanel {
                 try {
                     dob = LocalDate.parse(dobText, DATE_FMT);
                 } catch (DateTimeParseException ex) {
-                    JOptionPane.showMessageDialog(this,
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                             "Ngày sinh không đúng định dạng dd/MM/yyyy.",
                             "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
                     return;

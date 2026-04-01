@@ -7,6 +7,7 @@ import vn.edu.ute.carsalesms.model.dto.PaymentRequest;
 import vn.edu.ute.carsalesms.model.dto.SaleOrderItem;
 import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.PaymentMethod;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -14,8 +15,6 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
@@ -222,13 +221,13 @@ public class PaymentPanel extends JPanel {
         BigDecimal totalPaid = paymentRows.stream().map(PaymentItem::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal amountDues = order.finalAmount().subtract(totalPaid);
 
-        PaymentDialog dialog = new PaymentDialog(SwingUtilities.getWindowAncestor(this), order, amountDues);
+        PaymentDialog dialog = new PaymentDialog(DialogUiUtil.appDialogParent(this), order, amountDues);
         dialog.setVisible(true);
 
         dialog.getResult().ifPresent(req -> {
             try {
                 paymentController.addPayment(req);
-                showInfo("Ghi nhận thanh toán thành công!");
+                showInfo();
                 refreshOrders(); // Render cập nhật trạng thái
                 // Reselect
                 for (int i=0; i<orderTable.getRowCount(); i++) {
@@ -281,11 +280,16 @@ public class PaymentPanel extends JPanel {
     }
 
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
 
-    private void showInfo(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    private void showInfo() {
+        JOptionPane.showMessageDialog(getDialogParent(), "Ghi nhận thanh toán thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        return owner != null ? owner : this;
     }
 
     static class RightAlignRenderer extends DefaultTableCellRenderer {
@@ -309,8 +313,8 @@ public class PaymentPanel extends JPanel {
 
         private PaymentRequest result;
 
-        private PaymentDialog(Window owner, SaleOrderItem order, BigDecimal amountDues) {
-            super(owner, "Thanh toán Đơn " + order.orderCode(), ModalityType.APPLICATION_MODAL);
+        private PaymentDialog(Component owner, SaleOrderItem order, BigDecimal amountDues) {
+            super(resolveOwnerWindow(owner), "Thanh toán Đơn " + order.orderCode(), ModalityType.APPLICATION_MODAL);
             setLayout(new BorderLayout(8, 8));
 
             JPanel info = new JPanel(new GridLayout(2, 1));
@@ -366,12 +370,12 @@ public class PaymentPanel extends JPanel {
                     );
                     dispose();
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ.", "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Số tiền không hợp lệ.", "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
                 }
             });
 
-            actions.add(btnCancel);
             actions.add(btnSave);
+            actions.add(btnCancel);
 
             add(info, BorderLayout.NORTH);
             add(form, BorderLayout.CENTER);
@@ -380,6 +384,13 @@ public class PaymentPanel extends JPanel {
             pack();
             setSize(450, 360);
             setLocationRelativeTo(owner);
+        }
+
+        private static Window resolveOwnerWindow(Component owner) {
+            if (owner instanceof Window) {
+                return (Window) owner;
+            }
+            return owner == null ? null : SwingUtilities.getWindowAncestor(owner);
         }
 
         private void updateMonthsVisibility() {

@@ -6,6 +6,7 @@ import vn.edu.ute.carsalesms.model.entity.Account;
 import vn.edu.ute.carsalesms.model.entity.Staff;
 import vn.edu.ute.carsalesms.model.enums.StaffRole;
 import vn.edu.ute.carsalesms.model.enums.Status;
+import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.AuthService;
 import vn.edu.ute.carsalesms.session.CurrentSession;
 import vn.edu.ute.carsalesms.util.PasswordUtil;
@@ -17,9 +18,15 @@ public class AuthServiceImpl implements AuthService {
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
     private final AccountDao accountDao;
+    private final AuditLogService auditLogService;
 
     public AuthServiceImpl(AccountDao accountDao) {
+        this(accountDao, new NoOpAuditLogService());
+    }
+
+    public AuthServiceImpl(AccountDao accountDao, AuditLogService auditLogService) {
         this.accountDao = accountDao;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -36,6 +43,16 @@ public class AuthServiceImpl implements AuthService {
 
         if (!PasswordUtil.matches(rawPassword, account.getPasswordHash())) {
             handleFailedLogin(account);
+            if (account.getStaff() != null) {
+                auditLogService.logByStaffId(
+                        account.getStaff().getId(),
+                        "LOGIN_FAILED",
+                        "AUTH",
+                        account.getId(),
+                        null,
+                        "Sai mat khau. Username=" + normalizedUsername
+                );
+            }
             throw new IllegalArgumentException("Tài khoản hoặc mật khẩu không đúng.");
         }
 
@@ -50,6 +67,14 @@ public class AuthServiceImpl implements AuthService {
 
         AuthenticatedUser user = toAuthenticatedUser(savedAccount);
         CurrentSession.setCurrentUser(user);
+        auditLogService.logByStaffId(
+                user.staffId(),
+                "LOGIN_SUCCESS",
+                "AUTH",
+                account.getId(),
+                null,
+                "Dang nhap thanh cong. Username=" + user.username() + ", Role=" + user.role()
+        );
         return user;
     }
 

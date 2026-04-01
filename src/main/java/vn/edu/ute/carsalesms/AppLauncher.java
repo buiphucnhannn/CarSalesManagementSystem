@@ -22,6 +22,7 @@ import vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl;
 import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
 import vn.edu.ute.carsalesms.model.enums.StaffRole;
 import vn.edu.ute.carsalesms.service.AuthService;
+import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.BranchService;
 import vn.edu.ute.carsalesms.service.CarService;
 import vn.edu.ute.carsalesms.service.DashboardService;
@@ -44,17 +45,18 @@ public class AppLauncher {
     private static void startApplication() {
         try {
             LookAndFeelConfig.apply();
-            AuthController authController = buildAuthController();
+            AuditLogService auditLogService = buildAuditLogService();
+            AuthController authController = buildAuthController(auditLogService);
             DashboardService dashboardService = buildDashboardService();
-            CarManagementController carManagementController = buildCarManagementController();
-            BranchManagementController branchManagementController = buildBranchManagementController();
-            CustomerManagementController customerManagementController = buildCustomerManagementController();
-            StaffManagementController staffManagementController = buildStaffManagementController();
-            SaleOrderController saleOrderController = buildSaleOrderController();
-            PaymentController paymentController = buildPaymentController();
-            InstallmentController installmentController = buildInstallmentController();
-            InvoiceController invoiceController = buildInvoiceController();
-            PromotionController promotionController = buildPromotionController();
+            CarManagementController carManagementController = buildCarManagementController(auditLogService);
+            BranchManagementController branchManagementController = buildBranchManagementController(auditLogService);
+            CustomerManagementController customerManagementController = buildCustomerManagementController(auditLogService);
+            StaffManagementController staffManagementController = buildStaffManagementController(auditLogService);
+            SaleOrderController saleOrderController = buildSaleOrderController(auditLogService);
+            PaymentController paymentController = buildPaymentController(auditLogService);
+            InstallmentController installmentController = buildInstallmentController(auditLogService);
+            InvoiceController invoiceController = buildInvoiceController(auditLogService);
+            PromotionController promotionController = buildPromotionController(auditLogService);
             showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
                     customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController);
         } catch (Exception e) {
@@ -62,9 +64,13 @@ public class AppLauncher {
         }
     }
 
-    private static AuthController buildAuthController() {
+    private static AuditLogService buildAuditLogService() {
+        return new AuditLogServiceImpl(new AuditLogDaoImpl(), new StaffDaoImpl());
+    }
+
+    private static AuthController buildAuthController(AuditLogService auditLogService) {
         AccountDao accountDao = new AccountDaoImpl();
-        AuthService authService = new AuthServiceImpl(accountDao);
+        AuthService authService = new AuthServiceImpl(accountDao, auditLogService);
         return new AuthController(authService);
     }
 
@@ -72,46 +78,46 @@ public class AppLauncher {
         return new DashboardServiceImpl(new DashboardDaoImpl());
     }
 
-    private static CarManagementController buildCarManagementController() {
+    private static CarManagementController buildCarManagementController(AuditLogService auditLogService) {
         CarDao carDao = new CarDaoImpl();
         CarService carService = new CarServiceImpl(carDao);
-        return new CarManagementController(carService);
+        return new CarManagementController(carService, auditLogService);
     }
 
-    private static BranchManagementController buildBranchManagementController() {
+    private static BranchManagementController buildBranchManagementController(AuditLogService auditLogService) {
         BranchDao branchDao = new BranchDaoImpl();
         BranchService branchService = new BranchServiceImpl(branchDao);
-        return new BranchManagementController(branchService);
+        return new BranchManagementController(branchService, auditLogService);
     }
 
     /** Khởi tạo CustomerManagementController. */
-    private static CustomerManagementController buildCustomerManagementController() {
-        return new CustomerManagementController(new CustomerServiceImpl(new CustomerDaoImpl()));
+    private static CustomerManagementController buildCustomerManagementController(AuditLogService auditLogService) {
+        return new CustomerManagementController(new CustomerServiceImpl(new CustomerDaoImpl()), auditLogService);
     }
 
     /** Khởi tạo StaffManagementController. */
-    private static StaffManagementController buildStaffManagementController() {
-        return new StaffManagementController(new StaffServiceImpl(new StaffDaoImpl()));
+    private static StaffManagementController buildStaffManagementController(AuditLogService auditLogService) {
+        return new StaffManagementController(new StaffServiceImpl(new StaffDaoImpl()), auditLogService);
     }
 
-    private static SaleOrderController buildSaleOrderController() {
-        return new SaleOrderController(new SaleOrderServiceImpl(new SaleOrderDaoImpl(), new CarDaoImpl(), new CustomerDaoImpl(), new StaffDaoImpl(), new PromotionDaoImpl()));
+    private static SaleOrderController buildSaleOrderController(AuditLogService auditLogService) {
+        return new SaleOrderController(new SaleOrderServiceImpl(new SaleOrderDaoImpl(), new CarDaoImpl(), new CustomerDaoImpl(), new StaffDaoImpl(), new PromotionDaoImpl()), auditLogService);
     }
 
-    private static PaymentController buildPaymentController() {
-        return new PaymentController(new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl()));
+    private static PaymentController buildPaymentController(AuditLogService auditLogService) {
+        return new PaymentController(new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl()), auditLogService);
     }
 
-    private static InstallmentController buildInstallmentController() {
-        return new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl())));
+    private static InstallmentController buildInstallmentController(AuditLogService auditLogService) {
+        return new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl())), auditLogService);
     }
 
-    private static InvoiceController buildInvoiceController() {
-        return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl()));
+    private static InvoiceController buildInvoiceController(AuditLogService auditLogService) {
+        return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl()), auditLogService);
     }
 
-    private static PromotionController buildPromotionController() {
-        return new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl()));
+    private static PromotionController buildPromotionController(AuditLogService auditLogService) {
+        return new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl()), auditLogService);
     }
 
     private static void showLoginFrame(AuthController authController,
@@ -194,19 +200,21 @@ public class AppLauncher {
     }
 
     private static void logoutAndBackToLogin(JFrame dashboard) {
+        AuditLogService auditLogService = buildAuditLogService();
+
         CurrentSession.clear();
         dashboard.dispose();
-        AuthController authController = buildAuthController();
+        AuthController authController = buildAuthController(auditLogService);
         DashboardService dashboardService = buildDashboardService();
-        CarManagementController carManagementController = buildCarManagementController();
-        BranchManagementController branchManagementController = buildBranchManagementController();
-        CustomerManagementController customerManagementController = buildCustomerManagementController();
-        StaffManagementController staffManagementController = buildStaffManagementController();
-        SaleOrderController saleOrderController = buildSaleOrderController();
-        PaymentController paymentController = buildPaymentController();
-        InstallmentController installmentController = buildInstallmentController();
-        InvoiceController invoiceController = buildInvoiceController();
-        PromotionController promotionController = buildPromotionController();
+        CarManagementController carManagementController = buildCarManagementController(auditLogService);
+        BranchManagementController branchManagementController = buildBranchManagementController(auditLogService);
+        CustomerManagementController customerManagementController = buildCustomerManagementController(auditLogService);
+        StaffManagementController staffManagementController = buildStaffManagementController(auditLogService);
+        SaleOrderController saleOrderController = buildSaleOrderController(auditLogService);
+        PaymentController paymentController = buildPaymentController(auditLogService);
+        InstallmentController installmentController = buildInstallmentController(auditLogService);
+        InvoiceController invoiceController = buildInvoiceController(auditLogService);
+        PromotionController promotionController = buildPromotionController(auditLogService);
         showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
                 customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController);
     }

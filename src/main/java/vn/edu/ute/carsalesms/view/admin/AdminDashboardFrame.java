@@ -2,6 +2,7 @@ package vn.edu.ute.carsalesms.view.admin;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -19,6 +21,7 @@ import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import vn.edu.ute.carsalesms.controller.CarManagementController;
 import vn.edu.ute.carsalesms.controller.BranchManagementController;
+import vn.edu.ute.carsalesms.controller.AuditLogController;
 import vn.edu.ute.carsalesms.controller.CustomerManagementController;
 import vn.edu.ute.carsalesms.controller.StaffManagementController;
 import vn.edu.ute.carsalesms.controller.SaleOrderController;
@@ -32,11 +35,10 @@ import vn.edu.ute.carsalesms.model.dto.AdminOverviewData;
 import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
 import vn.edu.ute.carsalesms.service.CarService;
 import vn.edu.ute.carsalesms.service.DashboardService;
-import vn.edu.ute.carsalesms.service.SaleOrderService;
-import vn.edu.ute.carsalesms.service.PaymentService;
 import vn.edu.ute.carsalesms.service.impl.*;
 import vn.edu.ute.carsalesms.view.component.CarManagementPanel;
 import vn.edu.ute.carsalesms.view.component.BranchManagementPanel;
+import vn.edu.ute.carsalesms.view.component.AuditLogPanel;
 import vn.edu.ute.carsalesms.view.component.CustomerManagementPanel;
 import vn.edu.ute.carsalesms.view.component.SaleOrderPanel;
 import vn.edu.ute.carsalesms.view.component.PaymentPanel;
@@ -109,6 +111,7 @@ public class AdminDashboardFrame extends JFrame {
     private final InstallmentController installmentController;
     private final InvoiceController invoiceController;
     private final PromotionController promotionController;
+    private final AuditLogController auditLogController;
 
     public AdminDashboardFrame() {
         this(null, buildDefaultDashboardService(), buildDefaultCarManagementController(), buildDefaultBranchManagementController(),
@@ -151,6 +154,7 @@ public class AdminDashboardFrame extends JFrame {
         this.installmentController = Objects.requireNonNull(installmentController);
         this.invoiceController = Objects.requireNonNull(invoiceController);
         this.promotionController = Objects.requireNonNull(promotionController);
+        this.auditLogController = buildDefaultAuditLogController();
         setTitle("Car Sales Management - Admin Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(UiSizing.WINDOW_MIN_SIZE);
@@ -209,6 +213,10 @@ public class AdminDashboardFrame extends JFrame {
         return new PaymentController(new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl()));
     }
 
+    private static AuditLogController buildDefaultAuditLogController() {
+        return new AuditLogController(new AuditLogServiceImpl(new AuditLogDaoImpl(), new StaffDaoImpl()));
+    }
+
     private AdminOverviewData loadOverviewData(DashboardService dashboardService) {
         if (dashboardService == null) {
             return AdminOverviewData.empty();
@@ -238,18 +246,19 @@ public class AdminDashboardFrame extends JFrame {
         contentCards.setOpaque(false);
         contentCards.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
 
-        contentCards.add(createDashboardPanel(), CARD_DASHBOARD);
-        contentCards.add(createCarsPanel(), CARD_CARS);
-        contentCards.add(createBranchesPanel(), CARD_BRANCHES);
-        contentCards.add(createCustomersPanel(), CARD_CUSTOMERS);
-        contentCards.add(createStaffPanel(), CARD_STAFF);
-        contentCards.add(createOrdersPanel(), CARD_ORDERS);
-        contentCards.add(createPaymentsPanel(), CARD_PAYMENTS);
-        contentCards.add(new InstallmentPanel(installmentController, saleOrderController), CARD_INSTALLMENTS);
-        contentCards.add(new InvoicePanel(invoiceController), CARD_INVOICES);
-        contentCards.add(new PromotionPanel(promotionController), CARD_PROMOTIONS);
-        contentCards.add(createTestDrivesPanel(), CARD_TESTDRIVES);
-        contentCards.add(createWarrantiesPanel(), CARD_WARRANTIES);
+        addCardComponent(createDashboardPanel(), CARD_DASHBOARD);
+        addCardComponent(createCarsPanel(), CARD_CARS);
+        addCardComponent(createBranchesPanel(), CARD_BRANCHES);
+        addCardComponent(createCustomersPanel(), CARD_CUSTOMERS);
+        addCardComponent(createStaffPanel(), CARD_STAFF);
+        addCardComponent(createOrdersPanel(), CARD_ORDERS);
+        addCardComponent(createPaymentsPanel(), CARD_PAYMENTS);
+        addCardComponent(createInstallmentsPanel(), CARD_INSTALLMENTS);
+        addCardComponent(createInvoicesPanel(), CARD_INVOICES);
+        addCardComponent(createPromotionsPanel(), CARD_PROMOTIONS);
+        addCardComponent(createAuditLogPanel(), CARD_AUDITLOG);
+        addCardComponent(createTestDrivesPanel(), CARD_TESTDRIVES);
+        addCardComponent(createWarrantiesPanel(), CARD_WARRANTIES);
 
         // Các module còn lại vẫn là placeholder chờ triển khai
         MODULE_ITEMS.stream()
@@ -263,15 +272,18 @@ public class AdminDashboardFrame extends JFrame {
                         && !CARD_INSTALLMENTS.equals(item.key())
                         && !CARD_INVOICES.equals(item.key())
                         && !CARD_PROMOTIONS.equals(item.key())
+                        && !CARD_AUDITLOG.equals(item.key())
                         && !CARD_TESTDRIVES.equals(item.key())
                         && !CARD_WARRANTIES.equals(item.key()))
-                .forEach(item -> contentCards.add(
-                        createModulePlaceholderPanel(item.label(), item.description()),
-                        item.key()
-                ));
+                .forEach(item -> addCardComponent(createModulePlaceholderPanel(item.label(), item.description()), item.key()));
 
         contentCardLayout.show(contentCards, CARD_DASHBOARD);
         return contentCards;
+    }
+
+    private void addCardComponent(JComponent card, String key) {
+        card.setName(key);
+        contentCards.add(card, key);
     }
 
 
@@ -308,14 +320,10 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý xe");
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý xe",
+                "Theo dõi xe, hãng xe và loại xe; hỗ trợ thêm/sửa/ngừng kinh doanh và tra cứu nhanh."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new CarManagementPanel(carManagementController, true), BorderLayout.CENTER);
@@ -326,14 +334,10 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý Chi nhánh");
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Chi nhánh",
+                "Quản lý thông tin chi nhánh và theo dõi hiệu quả bán hàng theo từng chi nhánh."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new BranchManagementPanel(branchManagementController), BorderLayout.CENTER);
@@ -348,12 +352,10 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-        JLabel title = new JLabel("Quản lý Khách hàng");
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Khách hàng",
+                "Lưu trữ hồ sơ khách hàng, cập nhật thông tin liên hệ và hỗ trợ tra cứu lịch sử giao dịch."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new CustomerManagementPanel(customerManagementController), BorderLayout.CENTER);
@@ -368,12 +370,10 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-        JLabel title = new JLabel("Quản lý Nhân viên & Tài khoản");
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Nhân viên & Tài khoản",
+                "Quản trị hồ sơ nhân viên, phân quyền, tạo tài khoản, khóa/mở khóa và đặt lại mật khẩu."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new StaffManagementPanel(staffManagementController), BorderLayout.CENTER);
@@ -384,12 +384,10 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-        JLabel title = new JLabel("Phân hệ Bán hàng (Đơn bán)");
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Phân hệ Bán hàng (Đơn bán)",
+                "Tạo đơn bán, theo dõi trạng thái đơn và quản lý chi tiết các xe trong từng đơn hàng."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new SaleOrderPanel(saleOrderController), BorderLayout.CENTER);
@@ -400,15 +398,69 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-        JLabel title = new JLabel("Lịch sử & Ghi nhận Thanh toán");
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Lịch sử & Ghi nhận Thanh toán",
+                "Ghi nhận các lần thanh toán, theo dõi dư nợ và kiểm soát tiến độ thu tiền theo đơn bán."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new PaymentPanel(saleOrderController, paymentController), BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JPanel createInstallmentsPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Trả góp",
+                "Theo dõi lịch trả góp, trạng thái từng kỳ và ghi nhận thanh toán cho hợp đồng trả góp."
+        );
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new InstallmentPanel(installmentController, saleOrderController), BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JPanel createInvoicesPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Hóa đơn",
+                "Tra cứu hóa đơn đã phát hành và xuất file PDF phục vụ đối soát, lưu trữ."
+        );
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new InvoicePanel(invoiceController), BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JPanel createPromotionsPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Khuyến mãi",
+                "Thiết lập chương trình khuyến mãi, cập nhật điều kiện áp dụng và quản lý trạng thái hoạt động."
+        );
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new PromotionPanel(promotionController), BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private JPanel createAuditLogPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
+        wrapper.setOpaque(false);
+
+        JPanel headerCard = createModuleHeaderCard(
+                "Nhật ký hệ thống",
+                "Theo dõi toàn bộ thao tác người dùng theo thời gian: tạo/sửa/xóa, đăng nhập, thanh toán, xuất hóa đơn..."
+        );
+
+        wrapper.add(headerCard, BorderLayout.NORTH);
+        wrapper.add(new AuditLogPanel(auditLogController), BorderLayout.CENTER);
         return wrapper;
     }
 
@@ -492,8 +544,67 @@ public class AdminDashboardFrame extends JFrame {
         return panel;
     }
 
+    private JPanel createModuleHeaderCard(String titleText, String descriptionText) {
+        JPanel card = createWhiteCard();
+        card.setLayout(new BorderLayout(0, 4));
+
+        JLabel title = new JLabel(titleText);
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+
+        JLabel desc = new JLabel(descriptionText);
+        desc.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        desc.setForeground(UiPalette.TEXT_SECONDARY);
+
+        card.add(title, BorderLayout.NORTH);
+        card.add(desc, BorderLayout.CENTER);
+        return card;
+    }
+
     private void switchContent(String cardKey) {
+        refreshCardByKey(cardKey);
         contentCardLayout.show(contentCards, cardKey);
+        contentCards.revalidate();
+        contentCards.repaint();
+    }
+
+    private void refreshCardByKey(String cardKey) {
+        JComponent refreshed = createCardByKey(cardKey);
+        if (refreshed == null) {
+            return;
+        }
+
+        for (Component c : contentCards.getComponents()) {
+            if (cardKey.equals(c.getName())) {
+                contentCards.remove(c);
+                break;
+            }
+        }
+
+        addCardComponent(refreshed, cardKey);
+    }
+
+    private JComponent createCardByKey(String cardKey) {
+        return switch (cardKey) {
+            case CARD_DASHBOARD -> createDashboardPanel();
+            case CARD_CARS -> createCarsPanel();
+            case CARD_BRANCHES -> createBranchesPanel();
+            case CARD_CUSTOMERS -> createCustomersPanel();
+            case CARD_STAFF -> createStaffPanel();
+            case CARD_ORDERS -> createOrdersPanel();
+            case CARD_PAYMENTS -> createPaymentsPanel();
+            case CARD_INSTALLMENTS -> createInstallmentsPanel();
+            case CARD_INVOICES -> createInvoicesPanel();
+            case CARD_PROMOTIONS -> createPromotionsPanel();
+            case CARD_AUDITLOG -> createAuditLogPanel();
+            case CARD_TESTDRIVES -> createTestDrivesPanel();
+            case CARD_WARRANTIES -> createWarrantiesPanel();
+            default -> MODULE_ITEMS.stream()
+                    .filter(item -> item.key().equals(cardKey) && item.description() != null)
+                    .findFirst()
+                    .map(item -> createModulePlaceholderPanel(item.label(), item.description()))
+                    .orElse(null);
+        };
     }
 
     private String formatCurrencyShort(BigDecimal amount) {
@@ -521,21 +632,18 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản Lý Phân Năng Lái Thử");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Lái thử",
+                "Lập lịch lái thử, phân công nhân viên phụ trách và theo dõi tiến độ xác nhận lịch hẹn."
+        );
 
         // Khởi tạo các Service
         vn.edu.ute.carsalesms.dao.TestDriveDao tDao = new vn.edu.ute.carsalesms.dao.impl.TestDriveDaoImpl();
         vn.edu.ute.carsalesms.dao.CustomerDao cDao = new vn.edu.ute.carsalesms.dao.impl.CustomerDaoImpl();
         vn.edu.ute.carsalesms.dao.CarDao carDao = new vn.edu.ute.carsalesms.dao.impl.CarDaoImpl();
         vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
-        vn.edu.ute.carsalesms.service.TestDriveService tService = new vn.edu.ute.carsalesms.service.impl.TestDriveServiceImpl(tDao, cDao, carDao, sDao);
+        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
+        vn.edu.ute.carsalesms.service.TestDriveService tService = new vn.edu.ute.carsalesms.service.impl.TestDriveServiceImpl(tDao, cDao, carDao, sDao, auditService);
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(tService, cDao, carDao, sDao), BorderLayout.CENTER);
@@ -546,18 +654,16 @@ public class AdminDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createWhiteCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Hồ Sơ Bảo Hành Gara Toàn Cầu");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Bảo hành",
+                "Tra cứu và cập nhật hồ sơ bảo hành theo xe, theo đơn bán và theo thời gian hiệu lực."
+        );
 
         vn.edu.ute.carsalesms.dao.WarrantyDao wDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
         vn.edu.ute.carsalesms.dao.SaleOrderDao oDao = new vn.edu.ute.carsalesms.dao.impl.SaleOrderDaoImpl();
-        vn.edu.ute.carsalesms.service.WarrantyService wService = new vn.edu.ute.carsalesms.service.impl.WarrantyServiceImpl(wDao, oDao);
+        vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
+        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
+        vn.edu.ute.carsalesms.service.WarrantyService wService = new vn.edu.ute.carsalesms.service.impl.WarrantyServiceImpl(wDao, oDao, auditService);
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(wService), BorderLayout.CENTER);

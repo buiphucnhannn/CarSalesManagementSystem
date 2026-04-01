@@ -9,6 +9,7 @@ import vn.edu.ute.carsalesms.model.dto.StaffItem;
 import vn.edu.ute.carsalesms.model.dto.StaffManagementMetadata;
 import vn.edu.ute.carsalesms.model.enums.StaffRole;
 import vn.edu.ute.carsalesms.model.enums.Status;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 import javax.swing.*;
@@ -149,8 +150,16 @@ public class StaffManagementPanel extends JPanel {
     }
 
     private Component getAppDialogParent() {
-        Window owner = SwingUtilities.getWindowAncestor(this);
+        Component owner = DialogUiUtil.appDialogParent(this);
         return owner != null ? owner : this;
+    }
+
+    private Window getAppDialogWindow() {
+        Component owner = getAppDialogParent();
+        if (owner instanceof Window) {
+            return (Window) owner;
+        }
+        return SwingUtilities.getWindowAncestor(owner);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -304,7 +313,7 @@ public class StaffManagementPanel extends JPanel {
         private void showEditor(StaffItem existing) {
             reloadMetadata();
             StaffEditorDialog dialog = new StaffEditorDialog(
-                    SwingUtilities.getWindowAncestor(this), metadata, existing);
+                    getAppDialogWindow(), metadata, existing);
             dialog.setVisible(true);
 
             dialog.getResult().ifPresent(request -> {
@@ -505,7 +514,7 @@ public class StaffManagementPanel extends JPanel {
         private void showAccountEditor(AccountItem existing) {
             // Lấy danh sách nhân viên chưa có tài khoản để điền combo khi tạo mới
             AccountEditorDialog dialog = new AccountEditorDialog(
-                    SwingUtilities.getWindowAncestor(this), existing,
+                    getAppDialogWindow(), existing,
                     controller.loadStaffsPendingAccount());
             dialog.setVisible(true);
 
@@ -535,7 +544,7 @@ public class StaffManagementPanel extends JPanel {
         /** Mở dialog đặt lại mật khẩu cho tài khoản đã chọn. */
         private void showResetPasswordDialog(AccountItem item) {
             ResetPasswordDialog dialog = new ResetPasswordDialog(
-                    SwingUtilities.getWindowAncestor(this),
+                    getAppDialogWindow(),
                     item);
             dialog.setVisible(true);
 
@@ -575,7 +584,7 @@ public class StaffManagementPanel extends JPanel {
         /** Hiển thị thông báo ở chính giữa cửa sổ app. */
         private void showCenteredInfoDialog(String message) {
             JOptionPane optionPane = new JOptionPane(message, JOptionPane.INFORMATION_MESSAGE);
-            Window owner = SwingUtilities.getWindowAncestor(this);
+            Window owner = getAppDialogWindow();
             JDialog dialog = optionPane.createDialog(owner, "Thông báo");
             dialog.setLocationRelativeTo(owner);
             dialog.setVisible(true);
@@ -737,14 +746,14 @@ public class StaffManagementPanel extends JPanel {
         /** Đọc form và tạo request hoặc hiển thị lỗi validate. */
         private void onSave() {
             if (codeField.getText().isBlank() || fullNameField.getText().isBlank()) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng điền đủ các trường bắt buộc (*).",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             CarLookupItem branch = (CarLookupItem) branchCombo.getSelectedItem();
             if (branch == null) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng chọn chi nhánh.",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -901,7 +910,7 @@ public class StaffManagementPanel extends JPanel {
         /** Đọc form và tạo AccountCommandRequest. */
         private void onSave(AccountItem existing) {
             if (usernameField.getText().isBlank()) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng nhập tên đăng nhập.",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -911,7 +920,7 @@ public class StaffManagementPanel extends JPanel {
 
             // Khi tạo mới bắt buộc phải có mật khẩu
             if (existing == null && rawPassword.isBlank()) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng nhập mật khẩu.",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -922,7 +931,7 @@ public class StaffManagementPanel extends JPanel {
                 // Lấy id nhân viên từ combo
                 StaffItem selectedStaff = (StaffItem) staffCombo.getSelectedItem();
                 if (selectedStaff == null) {
-                    JOptionPane.showMessageDialog(this,
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                             "Vui lòng chọn nhân viên.",
                             "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                     return;
@@ -1056,7 +1065,7 @@ public class StaffManagementPanel extends JPanel {
         private void onSave() {
             String password = new String(passwordField.getPassword()).trim();
             if (password.isBlank()) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng nhập mật khẩu mới.",
                         "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
                 return;

@@ -1,10 +1,12 @@
 package vn.edu.ute.carsalesms.view.component;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Window;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +40,7 @@ import vn.edu.ute.carsalesms.model.dto.CarManagementMetadata;
 import vn.edu.ute.carsalesms.model.dto.CategoryCommandRequest;
 import vn.edu.ute.carsalesms.model.dto.CategoryManagementItem;
 import vn.edu.ute.carsalesms.model.enums.Status;
+import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
 import vn.edu.ute.carsalesms.view.theme.UiPalette;
 
 public class CarManagementPanel extends JPanel {
@@ -127,11 +130,24 @@ public class CarManagementPanel extends JPanel {
     }
 
     private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), message, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
 
     private void showInfo(String message) {
-        JOptionPane.showMessageDialog(this, message, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), message, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private Component getDialogParent() {
+        Component owner = DialogUiUtil.appDialogParent(this);
+        return owner != null ? owner : this;
+    }
+
+    private Window getDialogWindow() {
+        Component owner = getDialogParent();
+        if (owner instanceof Window) {
+            return (Window) owner;
+        }
+        return SwingUtilities.getWindowAncestor(owner);
     }
 
     private final class CarTabPanel extends JPanel {
@@ -272,7 +288,7 @@ public class CarManagementPanel extends JPanel {
 
         private void deactivate(CarManagementItem item) {
             int confirm = JOptionPane.showConfirmDialog(
-                    this,
+                    getDialogParent(),
                     "Xác nhận ngừng kinh doanh xe: " + item.carCode() + "?",
                     "Xác nhận",
                     JOptionPane.YES_NO_OPTION
@@ -290,7 +306,7 @@ public class CarManagementPanel extends JPanel {
 
         private void showEditor(CarManagementItem existing) {
             reloadMetadata();
-            CarEditorDialog dialog = new CarEditorDialog(SwingUtilities.getWindowAncestor(this), metadata, existing);
+            CarEditorDialog dialog = new CarEditorDialog(getDialogWindow(), metadata, existing);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
                 try {
@@ -412,7 +428,7 @@ public class CarManagementPanel extends JPanel {
         }
 
         private void showEditor(BrandManagementItem existing) {
-            BrandEditorDialog dialog = new BrandEditorDialog(SwingUtilities.getWindowAncestor(this), existing);
+            BrandEditorDialog dialog = new BrandEditorDialog(getDialogWindow(), existing);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
                 try {
@@ -430,7 +446,7 @@ public class CarManagementPanel extends JPanel {
 
         private void deactivate(BrandManagementItem item) {
             int confirm = JOptionPane.showConfirmDialog(
-                    this,
+                    getDialogParent(),
                     "Xác nhận ngừng hoạt động hãng: " + item.brandCode() + "?",
                     "Xác nhận",
                     JOptionPane.YES_NO_OPTION
@@ -541,7 +557,7 @@ public class CarManagementPanel extends JPanel {
         }
 
         private void showEditor(CategoryManagementItem existing) {
-            CategoryEditorDialog dialog = new CategoryEditorDialog(SwingUtilities.getWindowAncestor(this), existing);
+            CategoryEditorDialog dialog = new CategoryEditorDialog(getDialogWindow(), existing);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
                 try {
@@ -559,7 +575,7 @@ public class CarManagementPanel extends JPanel {
 
         private void deactivate(CategoryManagementItem item) {
             int confirm = JOptionPane.showConfirmDialog(
-                    this,
+                    getDialogParent(),
                     "Xác nhận ngừng hoạt động loại xe: " + item.categoryCode() + "?",
                     "Xác nhận",
                     JOptionPane.YES_NO_OPTION
@@ -680,7 +696,7 @@ public class CarManagementPanel extends JPanel {
                 );
                 dispose();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.", "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.", "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
             }
         }
 
