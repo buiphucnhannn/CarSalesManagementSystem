@@ -3,7 +3,7 @@ package vn.edu.ute.carsalesms.controller;
 import vn.edu.ute.carsalesms.model.dto.InvoiceItem;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.InvoiceService;
-import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
+import vn.edu.ute.carsalesms.service.NoOpAuditLogService;
 
 import java.nio.file.Path;
 import java.util.List;

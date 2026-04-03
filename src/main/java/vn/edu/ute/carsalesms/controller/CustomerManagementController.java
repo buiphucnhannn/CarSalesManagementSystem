@@ -4,7 +4,7 @@ import vn.edu.ute.carsalesms.model.dto.CustomerCommandRequest;
 import vn.edu.ute.carsalesms.model.dto.CustomerItem;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.CustomerService;
-import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
+import vn.edu.ute.carsalesms.service.NoOpAuditLogService;
 
 import java.util.List;
 import java.util.Objects;

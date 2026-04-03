@@ -8,20 +8,30 @@ import vn.edu.ute.carsalesms.model.enums.InstallmentStatus;
 import vn.edu.ute.carsalesms.model.enums.PaymentMethod;
 import vn.edu.ute.carsalesms.service.InstallmentService;
 import vn.edu.ute.carsalesms.service.PaymentService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.CurrentSessionContextAdapter;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class InstallmentServiceImpl implements InstallmentService {
 
     private final InstallmentPlanDao installmentPlanDao;
     private final PaymentService paymentService;
+    private final UserSessionContext sessionContext;
 
     public InstallmentServiceImpl(InstallmentPlanDao installmentPlanDao, PaymentService paymentService) {
-        this.installmentPlanDao = installmentPlanDao;
-        this.paymentService = paymentService;
+        this(installmentPlanDao, paymentService, new CurrentSessionContextAdapter());
+    }
+
+    public InstallmentServiceImpl(InstallmentPlanDao installmentPlanDao,
+                                  PaymentService paymentService,
+                                  UserSessionContext sessionContext) {
+        this.installmentPlanDao = Objects.requireNonNull(installmentPlanDao, "installmentPlanDao is required");
+        this.paymentService = Objects.requireNonNull(paymentService, "paymentService is required");
+        this.sessionContext = Objects.requireNonNull(sessionContext, "sessionContext is required");
     }
 
     @Override
@@ -206,6 +216,6 @@ public class InstallmentServiceImpl implements InstallmentService {
                 || plan.getSaleOrder().getStaff().getBranch() == null
                 ? null
                 : plan.getSaleOrder().getStaff().getBranch().getBranchName();
-        CurrentSession.assertBranchAccess(branchId, branchName);
+        sessionContext.assertBranchAccess(branchId, branchName);
     }
 }

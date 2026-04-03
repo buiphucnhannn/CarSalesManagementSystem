@@ -12,7 +12,7 @@ import vn.edu.ute.carsalesms.model.dto.CategoryManagementItem;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.CarService;
-import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
+import vn.edu.ute.carsalesms.service.NoOpAuditLogService;
 
 public class CarManagementController {
 

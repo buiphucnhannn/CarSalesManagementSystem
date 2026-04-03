@@ -7,8 +7,8 @@ import vn.edu.ute.carsalesms.model.dto.StaffItem;
 import vn.edu.ute.carsalesms.model.dto.StaffManagementMetadata;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.AuditLogService;
+import vn.edu.ute.carsalesms.service.NoOpAuditLogService;
 import vn.edu.ute.carsalesms.service.StaffService;
-import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
 
 import java.util.List;
 import java.util.Objects;

@@ -30,13 +30,11 @@ import vn.edu.ute.carsalesms.controller.InstallmentController;
 import vn.edu.ute.carsalesms.controller.InvoiceController;
 import vn.edu.ute.carsalesms.controller.PromotionController;
 import vn.edu.ute.carsalesms.controller.StatisticsController;
-import vn.edu.ute.carsalesms.dao.CarDao;
-import vn.edu.ute.carsalesms.dao.impl.*;
 import vn.edu.ute.carsalesms.model.dto.AdminOverviewData;
 import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
-import vn.edu.ute.carsalesms.service.CarService;
 import vn.edu.ute.carsalesms.service.DashboardService;
-import vn.edu.ute.carsalesms.service.impl.*;
+import vn.edu.ute.carsalesms.service.TestDriveService;
+import vn.edu.ute.carsalesms.service.WarrantyService;
 import vn.edu.ute.carsalesms.view.component.CarManagementPanel;
 import vn.edu.ute.carsalesms.view.component.BranchManagementPanel;
 import vn.edu.ute.carsalesms.view.component.AuditLogPanel;
@@ -117,6 +115,8 @@ public class AdminDashboardFrame extends JFrame {
     private final PromotionController promotionController;
     private final StatisticsController statisticsController;
     private final AuditLogController auditLogController;
+    private final TestDriveService testDriveService;
+    private final WarrantyService warrantyService;
 
     // Các Constructor Test/Rỗng đã bị gỡ bỏ để tránh gây lỗi Build và giúp luồng tập trung vào AppLauncher.
 
@@ -132,6 +132,9 @@ public class AdminDashboardFrame extends JFrame {
                                InvoiceController invoiceController,
                                PromotionController promotionController,
                                StatisticsController statisticsController,
+                               AuditLogController auditLogController,
+                               TestDriveService testDriveService,
+                               WarrantyService warrantyService,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
         this.dashboardService = Objects.requireNonNull(dashboardService, "dashboardService is required");
@@ -146,7 +149,9 @@ public class AdminDashboardFrame extends JFrame {
         this.invoiceController = Objects.requireNonNull(invoiceController);
         this.promotionController = Objects.requireNonNull(promotionController);
         this.statisticsController = Objects.requireNonNull(statisticsController);
-        this.auditLogController = buildDefaultAuditLogController();
+        this.auditLogController = Objects.requireNonNull(auditLogController);
+        this.testDriveService = Objects.requireNonNull(testDriveService);
+        this.warrantyService = Objects.requireNonNull(warrantyService);
         setTitle("Car Sales Management - Admin Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(UiSizing.WINDOW_MIN_SIZE);
@@ -171,46 +176,6 @@ public class AdminDashboardFrame extends JFrame {
 
         root.add(mainArea, BorderLayout.CENTER);
         setContentPane(root);
-    }
-
-    private static DashboardService buildDefaultDashboardService() {
-        return new DashboardServiceImpl(new DashboardDaoImpl());
-    }
-
-    private static CarManagementController buildDefaultCarManagementController() {
-        CarDao carDao = new CarDaoImpl();
-        CarService carService = new CarServiceImpl(carDao);
-        return new CarManagementController(carService);
-    }
-
-    private static BranchManagementController buildDefaultBranchManagementController() {
-        return new BranchManagementController(new BranchServiceImpl(new BranchDaoImpl()));
-    }
-
-    /** Khởi tạo CustomerManagementController với dependency mặc định. */
-    private static CustomerManagementController buildDefaultCustomerManagementController() {
-        return new CustomerManagementController(new CustomerServiceImpl(new CustomerDaoImpl()));
-    }
-
-    /** Khởi tạo StaffManagementController với dependency mặc định. */
-    private static StaffManagementController buildDefaultStaffManagementController() {
-        return new StaffManagementController(new StaffServiceImpl(new StaffDaoImpl()));
-    }
-
-    private static SaleOrderController buildDefaultSaleOrderController() {
-        return new SaleOrderController(new SaleOrderServiceImpl(new SaleOrderDaoImpl(), new CarDaoImpl(), new CustomerDaoImpl(), new StaffDaoImpl(), new PromotionDaoImpl()));
-    }
-
-    private static PaymentController buildDefaultPaymentController() {
-        return new PaymentController(new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl()));
-    }
-
-    private static AuditLogController buildDefaultAuditLogController() {
-        return new AuditLogController(new AuditLogServiceImpl(new AuditLogDaoImpl(), new StaffDaoImpl()));
-    }
-
-    private static StatisticsController buildDefaultStatisticsController() {
-        return new StatisticsController(new StatisticsServiceImpl(new StatisticsDaoImpl()));
     }
 
     private AdminOverviewData loadOverviewData(DashboardService dashboardService) {
@@ -654,16 +619,8 @@ public class AdminDashboardFrame extends JFrame {
                 "Lập lịch lái thử, phân công nhân viên phụ trách và theo dõi tiến độ xác nhận lịch hẹn."
         );
 
-        // Khởi tạo các Service
-        vn.edu.ute.carsalesms.dao.TestDriveDao tDao = new vn.edu.ute.carsalesms.dao.impl.TestDriveDaoImpl();
-        vn.edu.ute.carsalesms.dao.CustomerDao cDao = new vn.edu.ute.carsalesms.dao.impl.CustomerDaoImpl();
-        vn.edu.ute.carsalesms.dao.CarDao carDao = new vn.edu.ute.carsalesms.dao.impl.CarDaoImpl();
-        vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
-        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
-        vn.edu.ute.carsalesms.service.TestDriveService tService = new vn.edu.ute.carsalesms.service.impl.TestDriveServiceImpl(tDao, cDao, carDao, sDao, auditService);
-
         wrapper.add(headerCard, BorderLayout.NORTH);
-        wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(tService, cDao, carDao, sDao), BorderLayout.CENTER);
+        wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(testDriveService), BorderLayout.CENTER);
         return wrapper;
     }
 
@@ -676,14 +633,8 @@ public class AdminDashboardFrame extends JFrame {
                 "Tra cứu và cập nhật hồ sơ bảo hành theo xe, theo đơn bán và theo thời gian hiệu lực."
         );
 
-        vn.edu.ute.carsalesms.dao.WarrantyDao wDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
-        vn.edu.ute.carsalesms.dao.SaleOrderDao oDao = new vn.edu.ute.carsalesms.dao.impl.SaleOrderDaoImpl();
-        vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
-        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
-        vn.edu.ute.carsalesms.service.WarrantyService wService = new vn.edu.ute.carsalesms.service.impl.WarrantyServiceImpl(wDao, oDao, auditService);
-
         wrapper.add(headerCard, BorderLayout.NORTH);
-        wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(wService), BorderLayout.CENTER);
+        wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(warrantyService), BorderLayout.CENTER);
         return wrapper;
     }
 }

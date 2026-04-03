@@ -10,10 +10,12 @@ import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.WarrantyStatus;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.WarrantyService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.CurrentSessionContextAdapter;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -22,17 +24,26 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final WarrantyDao warrantyDao;
     private final SaleOrderDao saleOrderDao; // Lấy List OrderDetail để sinh warranty
     private final AuditLogService auditLogService;
+    private final UserSessionContext sessionContext;
 
     public WarrantyServiceImpl(WarrantyDao warrantyDao, SaleOrderDao saleOrderDao) {
-        this(warrantyDao, saleOrderDao, new NoOpAuditLogService());
+        this(warrantyDao, saleOrderDao, new NoOpAuditLogService(), new CurrentSessionContextAdapter());
     }
 
     public WarrantyServiceImpl(WarrantyDao warrantyDao,
                                SaleOrderDao saleOrderDao,
                                AuditLogService auditLogService) {
-        this.warrantyDao = warrantyDao;
-        this.saleOrderDao = saleOrderDao;
-        this.auditLogService = auditLogService;
+        this(warrantyDao, saleOrderDao, auditLogService, new CurrentSessionContextAdapter());
+    }
+
+    public WarrantyServiceImpl(WarrantyDao warrantyDao,
+                               SaleOrderDao saleOrderDao,
+                               AuditLogService auditLogService,
+                               UserSessionContext sessionContext) {
+        this.warrantyDao = Objects.requireNonNull(warrantyDao, "warrantyDao is required");
+        this.saleOrderDao = Objects.requireNonNull(saleOrderDao, "saleOrderDao is required");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService is required");
+        this.sessionContext = Objects.requireNonNull(sessionContext, "sessionContext is required");
     }
 
     @Override
@@ -49,7 +60,7 @@ public class WarrantyServiceImpl implements WarrantyService {
 
         // --- 2. XỬ LÝ GỐC VÀ CẬP NHẬT TRẠNG THÁI HẾT HẠN NGẦM ---
         List<Warranty> lists = warrantyDao.findByKeyword(keyword);
-        if (!CurrentSession.isAdmin()) {
+        if (!sessionContext.isAdmin()) {
             lists = lists.stream().filter(this::canAccessWarranty).collect(Collectors.toList());
         }
         LocalDate now = LocalDate.now();
@@ -127,10 +138,10 @@ public class WarrantyServiceImpl implements WarrantyService {
     }
 
     private boolean canAccessOrder(SaleOrder order) {
-        if (CurrentSession.isAdmin()) {
+        if (sessionContext.isAdmin()) {
             return true;
         }
-        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long sessionBranchId = sessionContext.currentBranchId();
         Long orderBranchId = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
                 ? null
                 : order.getStaff().getBranch().getId();
@@ -138,10 +149,10 @@ public class WarrantyServiceImpl implements WarrantyService {
     }
 
     private boolean canAccessWarranty(Warranty warranty) {
-        if (CurrentSession.isAdmin()) {
+        if (sessionContext.isAdmin()) {
             return true;
         }
-        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long sessionBranchId = sessionContext.currentBranchId();
         Long warrantyBranchId = resolveWarrantyBranchId(warranty);
         return sessionBranchId == null || (warrantyBranchId != null && warrantyBranchId.equals(sessionBranchId));
     }
@@ -153,11 +164,11 @@ public class WarrantyServiceImpl implements WarrantyService {
         String branchName = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
                 ? null
                 : order.getStaff().getBranch().getBranchName();
-        CurrentSession.assertBranchAccess(branchId, branchName);
+        sessionContext.assertBranchAccess(branchId, branchName);
     }
 
     private void assertWarrantyAccess(Warranty warranty) {
-        CurrentSession.assertBranchAccess(resolveWarrantyBranchId(warranty), resolveWarrantyBranchName(warranty));
+        sessionContext.assertBranchAccess(resolveWarrantyBranchId(warranty), resolveWarrantyBranchName(warranty));
     }
 
     private Long resolveWarrantyBranchId(Warranty warranty) {

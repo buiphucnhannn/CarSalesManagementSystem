@@ -4,7 +4,9 @@ import vn.edu.ute.carsalesms.dao.CarDao;
 import vn.edu.ute.carsalesms.dao.CustomerDao;
 import vn.edu.ute.carsalesms.dao.StaffDao;
 import vn.edu.ute.carsalesms.dao.TestDriveDao;
+import vn.edu.ute.carsalesms.model.dto.TestDriveBookingMetadata;
 import vn.edu.ute.carsalesms.model.dto.TestDriveItem;
+import vn.edu.ute.carsalesms.model.dto.TestDriveLookupOption;
 import vn.edu.ute.carsalesms.model.dto.TestDriveRequest;
 import vn.edu.ute.carsalesms.model.entity.Car;
 import vn.edu.ute.carsalesms.model.entity.Customer;
@@ -13,11 +15,12 @@ import vn.edu.ute.carsalesms.model.entity.TestDrive;
 import vn.edu.ute.carsalesms.model.enums.TestDriveStatus;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.TestDriveService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.CurrentSessionContextAdapter;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class TestDriveServiceImpl implements TestDriveService {
 
@@ -26,38 +29,68 @@ public class TestDriveServiceImpl implements TestDriveService {
     private final CarDao carDao;
     private final StaffDao staffDao;
     private final AuditLogService auditLogService;
+    private final UserSessionContext sessionContext;
 
-    public TestDriveServiceImpl(TestDriveDao testDriveDao, CustomerDao customerDao, CarDao carDao, StaffDao staffDao) {
-        this(testDriveDao, customerDao, carDao, staffDao, new NoOpAuditLogService());
-    }
 
     public TestDriveServiceImpl(TestDriveDao testDriveDao,
                                 CustomerDao customerDao,
                                 CarDao carDao,
                                 StaffDao staffDao,
                                 AuditLogService auditLogService) {
-        this.testDriveDao = testDriveDao;
-        this.customerDao = customerDao;
-        this.carDao = carDao;
-        this.staffDao = staffDao;
-        this.auditLogService = auditLogService;
+        this(testDriveDao, customerDao, carDao, staffDao, auditLogService, new CurrentSessionContextAdapter());
+    }
+
+    public TestDriveServiceImpl(TestDriveDao testDriveDao,
+                                CustomerDao customerDao,
+                                CarDao carDao,
+                                StaffDao staffDao,
+                                AuditLogService auditLogService,
+                                UserSessionContext sessionContext) {
+        this.testDriveDao = Objects.requireNonNull(testDriveDao, "testDriveDao is required");
+        this.customerDao = Objects.requireNonNull(customerDao, "customerDao is required");
+        this.carDao = Objects.requireNonNull(carDao, "carDao is required");
+        this.staffDao = Objects.requireNonNull(staffDao, "staffDao is required");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService is required");
+        this.sessionContext = Objects.requireNonNull(sessionContext, "sessionContext is required");
     }
 
     @Override
     public List<TestDriveItem> findByKeyword(String keyword) {
         List<TestDrive> drives = testDriveDao.findByKeyword(keyword);
-        if (!CurrentSession.isAdmin()) {
-            Long sessionBranchId = CurrentSession.currentBranchId();
+        if (!sessionContext.isAdmin()) {
+            Long sessionBranchId = sessionContext.currentBranchId();
             if (sessionBranchId != null) {
                 drives = drives.stream()
                         .filter(this::canAccessTestDrive)
-                        .collect(Collectors.toList());
+                        .toList();
             }
         }
         return drives
                 .stream()
                 .map(this::mapToDto)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    @Override
+    public TestDriveBookingMetadata getBookingMetadata() {
+        List<TestDriveLookupOption> customers = customerDao.findCustomers(null)
+                .stream()
+                .map(c -> new TestDriveLookupOption(c.getId(), c.getFullName() + " (" + safe(c.getPhone()) + ")"))
+                .toList();
+
+        List<TestDriveLookupOption> cars = carDao.findCars(null, null)
+                .stream()
+                .filter(c -> canAccessBranch(c.getBranch() == null ? null : c.getBranch().getId()))
+                .map(c -> new TestDriveLookupOption(c.getId(), c.getCarName() + " - " + safe(c.getColor())))
+                .toList();
+
+        List<TestDriveLookupOption> staffs = staffDao.findStaffs(null, null)
+                .stream()
+                .filter(s -> canAccessBranch(s.getBranch() == null ? null : s.getBranch().getId()))
+                .map(s -> new TestDriveLookupOption(s.getId(), s.getFullName() + " (MS:" + s.getStaffCode() + ")"))
+                .toList();
+
+        return new TestDriveBookingMetadata(customers, cars, staffs);
     }
 
     @Override
@@ -151,7 +184,7 @@ public class TestDriveServiceImpl implements TestDriveService {
     }
 
     private boolean canAccessTestDrive(TestDrive td) {
-        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long sessionBranchId = sessionContext.currentBranchId();
         Long targetBranchId = td == null || td.getStaff() == null || td.getStaff().getBranch() == null
                 ? null
                 : td.getStaff().getBranch().getId();
@@ -169,6 +202,18 @@ public class TestDriveServiceImpl implements TestDriveService {
     }
 
     private void assertBranchAccess(Long branchId, String branchName) {
-        CurrentSession.assertBranchAccess(branchId, branchName);
+        sessionContext.assertBranchAccess(branchId, branchName);
+    }
+
+    private boolean canAccessBranch(Long branchId) {
+        if (sessionContext.isAdmin()) {
+            return true;
+        }
+        Long sessionBranchId = sessionContext.currentBranchId();
+        return sessionBranchId == null || sessionBranchId.equals(branchId);
+    }
+
+    private String safe(String value) {
+        return value == null ? "N/A" : value;
     }
 }

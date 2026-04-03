@@ -7,7 +7,8 @@ import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
 import vn.edu.ute.carsalesms.model.entity.AuditLog;
 import vn.edu.ute.carsalesms.model.entity.Staff;
 import vn.edu.ute.carsalesms.service.AuditLogService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.AuthSessionStore;
+import vn.edu.ute.carsalesms.session.CurrentAuthSessionStore;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -21,15 +22,21 @@ public class AuditLogServiceImpl implements AuditLogService {
 
     private final AuditLogDao auditLogDao;
     private final StaffDao staffDao;
+    private final AuthSessionStore authSessionStore;
 
     public AuditLogServiceImpl(AuditLogDao auditLogDao, StaffDao staffDao) {
+        this(auditLogDao, staffDao, new CurrentAuthSessionStore());
+    }
+
+    public AuditLogServiceImpl(AuditLogDao auditLogDao, StaffDao staffDao, AuthSessionStore authSessionStore) {
         this.auditLogDao = Objects.requireNonNull(auditLogDao, "auditLogDao is required");
         this.staffDao = Objects.requireNonNull(staffDao, "staffDao is required");
+        this.authSessionStore = Objects.requireNonNull(authSessionStore, "authSessionStore is required");
     }
 
     @Override
     public void log(String action, String entityName, Long entityId, String oldValue, String newValue) {
-        AuthenticatedUser user = CurrentSession.getCurrentUser();
+        AuthenticatedUser user = authSessionStore.getCurrentUser();
         if (user == null || user.staffId() == null) {
             return;
         }

@@ -4,6 +4,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import vn.edu.ute.carsalesms.controller.AuthController;
+import vn.edu.ute.carsalesms.controller.AuditLogController;
 import vn.edu.ute.carsalesms.controller.BranchManagementController;
 import vn.edu.ute.carsalesms.controller.CarManagementController;
 import vn.edu.ute.carsalesms.controller.CustomerManagementController;
@@ -17,6 +18,8 @@ import vn.edu.ute.carsalesms.controller.StaffManagementController;
 import vn.edu.ute.carsalesms.dao.AccountDao;
 import vn.edu.ute.carsalesms.dao.BranchDao;
 import vn.edu.ute.carsalesms.dao.CarDao;
+import vn.edu.ute.carsalesms.dao.CustomerDao;
+import vn.edu.ute.carsalesms.dao.StaffDao;
 import vn.edu.ute.carsalesms.dao.impl.*;
 import vn.edu.ute.carsalesms.dao.impl.DashboardDaoImpl;
 import vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl;
@@ -27,8 +30,18 @@ import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.BranchService;
 import vn.edu.ute.carsalesms.service.CarService;
 import vn.edu.ute.carsalesms.service.DashboardService;
+import vn.edu.ute.carsalesms.service.InvoiceAutoIssueService;
+import vn.edu.ute.carsalesms.service.PaymentInstallmentPlanService;
+import vn.edu.ute.carsalesms.service.PaymentOrderFinalizationService;
+import vn.edu.ute.carsalesms.service.PaymentRecordFactory;
+import vn.edu.ute.carsalesms.service.TestDriveService;
+import vn.edu.ute.carsalesms.service.PaymentValidationService;
+import vn.edu.ute.carsalesms.service.WarrantyAutoActivationService;
+import vn.edu.ute.carsalesms.service.WarrantyService;
 import vn.edu.ute.carsalesms.service.impl.*;
+import vn.edu.ute.carsalesms.session.CurrentSessionContextAdapter;
 import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 import vn.edu.ute.carsalesms.view.admin.AdminDashboardFrame;
 import vn.edu.ute.carsalesms.view.auth.LoginFrame;
 import vn.edu.ute.carsalesms.view.staff.StaffDashboardFrame;
@@ -39,6 +52,25 @@ import vn.edu.ute.carsalesms.view.theme.LookAndFeelConfig;
  */
 public class AppLauncher {
 
+    private record ApplicationDependencies(
+            AuthController authController,
+            DashboardService dashboardService,
+            CarManagementController carManagementController,
+            BranchManagementController branchManagementController,
+            CustomerManagementController customerManagementController,
+            StaffManagementController staffManagementController,
+            AuditLogController auditLogController,
+            SaleOrderController saleOrderController,
+            PaymentController paymentController,
+            InstallmentController installmentController,
+            InvoiceController invoiceController,
+            PromotionController promotionController,
+            StatisticsController statisticsController,
+            TestDriveService testDriveService,
+            WarrantyService warrantyService
+    ) {
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(AppLauncher::startApplication);
     }
@@ -46,24 +78,49 @@ public class AppLauncher {
     private static void startApplication() {
         try {
             LookAndFeelConfig.apply();
-            AuditLogService auditLogService = buildAuditLogService();
-            AuthController authController = buildAuthController(auditLogService);
-            DashboardService dashboardService = buildDashboardService();
-            CarManagementController carManagementController = buildCarManagementController(auditLogService);
-            BranchManagementController branchManagementController = buildBranchManagementController(auditLogService);
-            CustomerManagementController customerManagementController = buildCustomerManagementController(auditLogService);
-            StaffManagementController staffManagementController = buildStaffManagementController(auditLogService);
-            SaleOrderController saleOrderController = buildSaleOrderController(auditLogService);
-            PaymentController paymentController = buildPaymentController(auditLogService);
-            InstallmentController installmentController = buildInstallmentController(auditLogService);
-            InvoiceController invoiceController = buildInvoiceController(auditLogService);
-            PromotionController promotionController = buildPromotionController(auditLogService);
-            StatisticsController statisticsController = buildStatisticsController();
-            showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
-                    customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController, statisticsController);
+            ApplicationDependencies deps = bootstrapDependencies();
+            showLoginFrame(
+                    deps
+            );
         } catch (Exception e) {
             throw new IllegalStateException("Không thể khởi chạy ứng dụng", e);
         }
+    }
+
+    private static ApplicationDependencies bootstrapDependencies() {
+        AuditLogService auditLogService = buildAuditLogService();
+        CustomerDao testDriveCustomerDao = new CustomerDaoImpl();
+        CarDao testDriveCarDao = new CarDaoImpl();
+        StaffDao testDriveStaffDao = new StaffDaoImpl();
+        UserSessionContext sessionContext = new CurrentSessionContextAdapter();
+        InvoiceAutoIssueService invoiceAutoIssueService = new InvoiceAutoIssueServiceImpl(new InvoiceDaoImpl());
+        WarrantyAutoActivationService warrantyAutoActivationService = new WarrantyAutoActivationServiceImpl(new WarrantyDaoImpl());
+        PaymentInstallmentPlanService paymentInstallmentPlanService = new PaymentInstallmentPlanServiceImpl(new InstallmentPlanDaoImpl());
+        PaymentValidationService paymentValidationService = new PaymentValidationServiceImpl();
+        PaymentOrderFinalizationService paymentOrderFinalizationService =
+                new PaymentOrderFinalizationServiceImpl(invoiceAutoIssueService, warrantyAutoActivationService);
+        PaymentRecordFactory paymentRecordFactory = new PaymentRecordFactoryImpl();
+        return new ApplicationDependencies(
+                buildAuthController(auditLogService),
+                buildDashboardService(),
+                buildCarManagementController(auditLogService),
+                buildBranchManagementController(auditLogService),
+                buildCustomerManagementController(auditLogService),
+                buildStaffManagementController(auditLogService),
+                buildAuditLogController(auditLogService),
+                buildSaleOrderController(auditLogService),
+                buildPaymentController(auditLogService, sessionContext, paymentValidationService, paymentInstallmentPlanService, paymentOrderFinalizationService, paymentRecordFactory),
+                buildInstallmentController(auditLogService, sessionContext, paymentValidationService, paymentInstallmentPlanService, paymentOrderFinalizationService, paymentRecordFactory),
+                buildInvoiceController(auditLogService),
+                buildPromotionController(auditLogService),
+                buildStatisticsController(),
+                new TestDriveServiceImpl(new TestDriveDaoImpl(), testDriveCustomerDao, testDriveCarDao, testDriveStaffDao, auditLogService),
+                new WarrantyServiceImpl(new WarrantyDaoImpl(), new SaleOrderDaoImpl(), auditLogService)
+        );
+    }
+
+    private static AuditLogController buildAuditLogController(AuditLogService auditLogService) {
+        return new AuditLogController(auditLogService);
     }
 
     private static AuditLogService buildAuditLogService() {
@@ -106,12 +163,39 @@ public class AppLauncher {
         return new SaleOrderController(new SaleOrderServiceImpl(new SaleOrderDaoImpl(), new CarDaoImpl(), new CustomerDaoImpl(), new StaffDaoImpl(), new PromotionDaoImpl()), auditLogService);
     }
 
-    private static PaymentController buildPaymentController(AuditLogService auditLogService) {
-        return new PaymentController(new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl()), auditLogService);
+    private static PaymentController buildPaymentController(AuditLogService auditLogService,
+                                                            UserSessionContext sessionContext,
+                                                            PaymentValidationService paymentValidationService,
+                                                            PaymentInstallmentPlanService paymentInstallmentPlanService,
+                                                            PaymentOrderFinalizationService paymentOrderFinalizationService,
+                                                            PaymentRecordFactory paymentRecordFactory) {
+        return new PaymentController(new PaymentServiceImpl(
+                new PaymentDaoImpl(),
+                new SaleOrderDaoImpl(),
+                sessionContext,
+                paymentValidationService,
+                paymentInstallmentPlanService,
+                paymentOrderFinalizationService,
+                paymentRecordFactory
+        ), auditLogService);
     }
 
-    private static InstallmentController buildInstallmentController(AuditLogService auditLogService) {
-        return new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl())), auditLogService);
+    private static InstallmentController buildInstallmentController(AuditLogService auditLogService,
+                                                                    UserSessionContext sessionContext,
+                                                                    PaymentValidationService paymentValidationService,
+                                                                    PaymentInstallmentPlanService paymentInstallmentPlanService,
+                                                                    PaymentOrderFinalizationService paymentOrderFinalizationService,
+                                                                    PaymentRecordFactory paymentRecordFactory) {
+        PaymentServiceImpl paymentService = new PaymentServiceImpl(
+                new PaymentDaoImpl(),
+                new SaleOrderDaoImpl(),
+                sessionContext,
+                paymentValidationService,
+                paymentInstallmentPlanService,
+                paymentOrderFinalizationService,
+                paymentRecordFactory
+        );
+        return new InstallmentController(new InstallmentServiceImpl(new InstallmentPlanDaoImpl(), paymentService, sessionContext), auditLogService);
     }
 
     private static InvoiceController buildInvoiceController(AuditLogService auditLogService) {
@@ -126,56 +210,34 @@ public class AppLauncher {
         return new StatisticsController(new StatisticsServiceImpl(new StatisticsDaoImpl()));
     }
 
-    private static void showLoginFrame(AuthController authController,
-                                       DashboardService dashboardService,
-                                       CarManagementController carManagementController,
-                                       BranchManagementController branchManagementController,
-                                       CustomerManagementController customerManagementController,
-                                       StaffManagementController staffManagementController,
-                                       SaleOrderController saleOrderController,
-                                       PaymentController paymentController,
-                                       InstallmentController installmentController,
-                                       InvoiceController invoiceController,
-                                       PromotionController promotionController,
-                                       StatisticsController statisticsController) {
+    private static void showLoginFrame(ApplicationDependencies deps) {
         LoginFrame loginFrame = new LoginFrame(
-                authController,
-                user -> openDashboardByRole(user, dashboardService, carManagementController,
-                        branchManagementController,
-                        customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController, statisticsController)
+                deps.authController(),
+                user -> openDashboardByRole(user, deps)
         );
         loginFrame.setVisible(true);
     }
 
-    private static void openDashboardByRole(AuthenticatedUser user,
-                                            DashboardService dashboardService,
-                                            CarManagementController carManagementController,
-                                            BranchManagementController branchManagementController,
-                                            CustomerManagementController customerManagementController,
-                                            StaffManagementController staffManagementController,
-                                            SaleOrderController saleOrderController,
-                                            PaymentController paymentController,
-                                            InstallmentController installmentController,
-                                            InvoiceController invoiceController,
-                                            PromotionController promotionController,
-                                            StatisticsController statisticsController) {
+    private static void openDashboardByRole(AuthenticatedUser user, ApplicationDependencies deps) {
         JFrame dashboard;
         if (user.role() == StaffRole.ADMIN) {
             JFrame[] frameRef = new JFrame[1];
-            // Truyền đủ 10 tham số cho constructor mới của AdminDashboardFrame
             frameRef[0] = new AdminDashboardFrame(
                     user,
-                    dashboardService,
-                    carManagementController,
-                    branchManagementController,
-                    customerManagementController,
-                    staffManagementController,
-                    saleOrderController,
-                    paymentController,
-                    installmentController,
-                    invoiceController,
-                    promotionController,
-                    statisticsController,
+                    deps.dashboardService(),
+                    deps.carManagementController(),
+                    deps.branchManagementController(),
+                    deps.customerManagementController(),
+                    deps.staffManagementController(),
+                    deps.saleOrderController(),
+                    deps.paymentController(),
+                    deps.installmentController(),
+                    deps.invoiceController(),
+                    deps.promotionController(),
+                    deps.statisticsController(),
+                    deps.auditLogController(),
+                    deps.testDriveService(),
+                    deps.warrantyService(),
                     () -> logoutAndBackToLogin(frameRef[0])
             );
             dashboard = frameRef[0];
@@ -183,14 +245,16 @@ public class AppLauncher {
             JFrame[] frameRef = new JFrame[1];
             frameRef[0] = new StaffDashboardFrame(
                     user,
-                    dashboardService,
-                    carManagementController,
-                    customerManagementController,
-                    saleOrderController,
-                    paymentController,
-                    installmentController,
-                    invoiceController,
-                    statisticsController,
+                    deps.dashboardService(),
+                    deps.carManagementController(),
+                    deps.customerManagementController(),
+                    deps.saleOrderController(),
+                    deps.paymentController(),
+                    deps.installmentController(),
+                    deps.invoiceController(),
+                    deps.statisticsController(),
+                    deps.testDriveService(),
+                    deps.warrantyService(),
                     () -> logoutAndBackToLogin(frameRef[0])
             );
             dashboard = frameRef[0];
@@ -210,23 +274,9 @@ public class AppLauncher {
     }
 
     private static void logoutAndBackToLogin(JFrame dashboard) {
-        AuditLogService auditLogService = buildAuditLogService();
-
         CurrentSession.clear();
         dashboard.dispose();
-        AuthController authController = buildAuthController(auditLogService);
-        DashboardService dashboardService = buildDashboardService();
-        CarManagementController carManagementController = buildCarManagementController(auditLogService);
-        BranchManagementController branchManagementController = buildBranchManagementController(auditLogService);
-        CustomerManagementController customerManagementController = buildCustomerManagementController(auditLogService);
-        StaffManagementController staffManagementController = buildStaffManagementController(auditLogService);
-        SaleOrderController saleOrderController = buildSaleOrderController(auditLogService);
-        PaymentController paymentController = buildPaymentController(auditLogService);
-        InstallmentController installmentController = buildInstallmentController(auditLogService);
-        InvoiceController invoiceController = buildInvoiceController(auditLogService);
-        PromotionController promotionController = buildPromotionController(auditLogService);
-        StatisticsController statisticsController = buildStatisticsController();
-        showLoginFrame(authController, dashboardService, carManagementController, branchManagementController,
-                customerManagementController, staffManagementController, saleOrderController, paymentController, installmentController, invoiceController, promotionController, statisticsController);
+        ApplicationDependencies deps = bootstrapDependencies();
+        showLoginFrame(deps);
     }
 }

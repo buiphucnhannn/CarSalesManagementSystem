@@ -5,20 +5,30 @@ import vn.edu.ute.carsalesms.model.dto.InvoiceItem;
 import vn.edu.ute.carsalesms.model.entity.Invoice;
 import vn.edu.ute.carsalesms.service.InvoicePdfExporter;
 import vn.edu.ute.carsalesms.service.InvoiceService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.CurrentSessionContextAdapter;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class InvoiceServiceImpl implements InvoiceService {
 
     private final InvoiceDao invoiceDao;
     private final InvoicePdfExporter invoicePdfExporter;
+    private final UserSessionContext sessionContext;
 
     public InvoiceServiceImpl(InvoiceDao invoiceDao, InvoicePdfExporter invoicePdfExporter) {
-        this.invoiceDao = invoiceDao;
-        this.invoicePdfExporter = invoicePdfExporter;
+        this(invoiceDao, invoicePdfExporter, new CurrentSessionContextAdapter());
+    }
+
+    public InvoiceServiceImpl(InvoiceDao invoiceDao,
+                              InvoicePdfExporter invoicePdfExporter,
+                              UserSessionContext sessionContext) {
+        this.invoiceDao = Objects.requireNonNull(invoiceDao, "invoiceDao is required");
+        this.invoicePdfExporter = Objects.requireNonNull(invoicePdfExporter, "invoicePdfExporter is required");
+        this.sessionContext = Objects.requireNonNull(sessionContext, "sessionContext is required");
     }
 
     @Override
@@ -39,10 +49,10 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     private boolean canAccessInvoice(Invoice invoice) {
-        if (CurrentSession.isAdmin()) {
+        if (sessionContext.isAdmin()) {
             return true;
         }
-        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long sessionBranchId = sessionContext.currentBranchId();
         if (sessionBranchId == null) {
             return true;
         }
@@ -51,7 +61,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     private void assertInvoiceAccess(Invoice invoice) {
-        CurrentSession.assertBranchAccess(resolveBranchId(invoice), resolveBranchName(invoice));
+        sessionContext.assertBranchAccess(resolveBranchId(invoice), resolveBranchName(invoice));
     }
 
     private Long resolveBranchId(Invoice invoice) {

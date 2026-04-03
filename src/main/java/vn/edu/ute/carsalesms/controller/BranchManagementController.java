@@ -7,7 +7,7 @@ import vn.edu.ute.carsalesms.model.dto.BranchSalesReportItem;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.BranchService;
-import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
+import vn.edu.ute.carsalesms.service.NoOpAuditLogService;
 
 import java.time.LocalDateTime;
 import java.util.List;

@@ -28,29 +28,12 @@ import vn.edu.ute.carsalesms.controller.PaymentController;
 import vn.edu.ute.carsalesms.controller.InstallmentController;
 import vn.edu.ute.carsalesms.controller.InvoiceController;
 import vn.edu.ute.carsalesms.controller.StatisticsController;
-import vn.edu.ute.carsalesms.dao.CarDao;
-import vn.edu.ute.carsalesms.dao.impl.CarDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.CustomerDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.DashboardDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.InstallmentPlanDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.InvoiceDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.PaymentDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.PromotionDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.SaleOrderDaoImpl;
-import vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl;
 import vn.edu.ute.carsalesms.model.dto.AuthenticatedUser;
 import vn.edu.ute.carsalesms.model.dto.DashboardTaskItem;
 import vn.edu.ute.carsalesms.model.dto.StaffOverviewData;
-import vn.edu.ute.carsalesms.service.CarService;
 import vn.edu.ute.carsalesms.service.DashboardService;
-import vn.edu.ute.carsalesms.service.impl.CarServiceImpl;
-import vn.edu.ute.carsalesms.service.impl.CustomerServiceImpl;
-import vn.edu.ute.carsalesms.service.impl.DashboardServiceImpl;
-import vn.edu.ute.carsalesms.service.impl.InstallmentServiceImpl;
-import vn.edu.ute.carsalesms.service.impl.InvoicePdfExporterImpl;
-import vn.edu.ute.carsalesms.service.impl.InvoiceServiceImpl;
-import vn.edu.ute.carsalesms.service.impl.PaymentServiceImpl;
-import vn.edu.ute.carsalesms.service.impl.SaleOrderServiceImpl;
+import vn.edu.ute.carsalesms.service.TestDriveService;
+import vn.edu.ute.carsalesms.service.WarrantyService;
 import vn.edu.ute.carsalesms.view.component.CarManagementPanel;
 import vn.edu.ute.carsalesms.view.component.CustomerManagementPanel;
 import vn.edu.ute.carsalesms.view.component.SaleOrderPanel;
@@ -113,6 +96,8 @@ public class StaffDashboardFrame extends JFrame {
     private final InstallmentController installmentController;
     private final InvoiceController invoiceController;
     private final StatisticsController statisticsController;
+    private final TestDriveService testDriveService;
+    private final WarrantyService warrantyService;
 
     private StaffOverviewData overviewData;
 
@@ -127,6 +112,8 @@ public class StaffDashboardFrame extends JFrame {
                                InstallmentController installmentController,
                                InvoiceController invoiceController,
                                StatisticsController statisticsController,
+                               TestDriveService testDriveService,
+                               WarrantyService warrantyService,
                                Runnable onLogoutRequested) {
         this.onLogoutRequested = Objects.requireNonNull(onLogoutRequested, "onLogoutRequested is required");
         this.dashboardService = Objects.requireNonNull(dashboardService, "dashboardService is required");
@@ -140,6 +127,8 @@ public class StaffDashboardFrame extends JFrame {
         this.installmentController = Objects.requireNonNull(installmentController, "installmentController is required");
         this.invoiceController = Objects.requireNonNull(invoiceController, "invoiceController is required");
         this.statisticsController = Objects.requireNonNull(statisticsController, "statisticsController is required");
+        this.testDriveService = Objects.requireNonNull(testDriveService, "testDriveService is required");
+        this.warrantyService = Objects.requireNonNull(warrantyService, "warrantyService is required");
         setTitle("Car Sales Management - Staff Dashboard");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setMinimumSize(UiSizing.WINDOW_MIN_SIZE);
@@ -164,51 +153,6 @@ public class StaffDashboardFrame extends JFrame {
 
         root.add(mainArea, BorderLayout.CENTER);
         setContentPane(root);
-    }
-
-    private static DashboardService buildDefaultDashboardService() {
-        return new DashboardServiceImpl(new DashboardDaoImpl());
-    }
-
-    private static CarManagementController buildDefaultCarManagementController() {
-        CarDao carDao = new CarDaoImpl();
-        CarService carService = new CarServiceImpl(carDao);
-        return new CarManagementController(carService);
-    }
-
-    private static CustomerManagementController buildDefaultCustomerManagementController() {
-        return new CustomerManagementController(new CustomerServiceImpl(new CustomerDaoImpl()));
-    }
-
-    private static SaleOrderController buildDefaultSaleOrderController() {
-        return new SaleOrderController(new SaleOrderServiceImpl(
-                new SaleOrderDaoImpl(),
-                new CarDaoImpl(),
-                new CustomerDaoImpl(),
-                new StaffDaoImpl(),
-                new PromotionDaoImpl()));
-    }
-
-    private static PaymentController buildDefaultPaymentController() {
-        return new PaymentController(new PaymentServiceImpl(
-                new PaymentDaoImpl(),
-                new SaleOrderDaoImpl(),
-                new InvoiceDaoImpl(),
-                new InstallmentPlanDaoImpl()));
-    }
-
-    private static InstallmentController buildDefaultInstallmentController() {
-        return new InstallmentController(new InstallmentServiceImpl(
-                new InstallmentPlanDaoImpl(),
-                new PaymentServiceImpl(new PaymentDaoImpl(), new SaleOrderDaoImpl(), new InvoiceDaoImpl(), new InstallmentPlanDaoImpl())));
-    }
-
-    private static InvoiceController buildDefaultInvoiceController() {
-        return new InvoiceController(new InvoiceServiceImpl(new InvoiceDaoImpl(), new InvoicePdfExporterImpl()));
-    }
-
-    private static StatisticsController buildDefaultStatisticsController() {
-        return new StatisticsController(new vn.edu.ute.carsalesms.service.impl.StatisticsServiceImpl(new vn.edu.ute.carsalesms.dao.impl.StatisticsDaoImpl()));
     }
 
     private StaffOverviewData loadOverviewData(DashboardService dashboardService, AuthenticatedUser currentUser) {
@@ -546,16 +490,8 @@ public class StaffDashboardFrame extends JFrame {
 
         headerCard.add(title, BorderLayout.CENTER);
 
-        // Khởi tạo các Service
-        vn.edu.ute.carsalesms.dao.TestDriveDao tDao = new vn.edu.ute.carsalesms.dao.impl.TestDriveDaoImpl();
-        vn.edu.ute.carsalesms.dao.CustomerDao cDao = new vn.edu.ute.carsalesms.dao.impl.CustomerDaoImpl();
-        vn.edu.ute.carsalesms.dao.CarDao carDao = new vn.edu.ute.carsalesms.dao.impl.CarDaoImpl();
-        vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
-        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
-        vn.edu.ute.carsalesms.service.TestDriveService tService = new vn.edu.ute.carsalesms.service.impl.TestDriveServiceImpl(tDao, cDao, carDao, sDao, auditService);
-
         wrapper.add(headerCard, BorderLayout.NORTH);
-        wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(tService, cDao, carDao, sDao), BorderLayout.CENTER);
+        wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(testDriveService), BorderLayout.CENTER);
         return wrapper;
     }
 
@@ -572,14 +508,8 @@ public class StaffDashboardFrame extends JFrame {
 
         headerCard.add(title, BorderLayout.CENTER);
 
-        vn.edu.ute.carsalesms.dao.WarrantyDao wDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
-        vn.edu.ute.carsalesms.dao.SaleOrderDao oDao = new vn.edu.ute.carsalesms.dao.impl.SaleOrderDaoImpl();
-        vn.edu.ute.carsalesms.dao.StaffDao sDao = new vn.edu.ute.carsalesms.dao.impl.StaffDaoImpl();
-        vn.edu.ute.carsalesms.service.AuditLogService auditService = new vn.edu.ute.carsalesms.service.impl.AuditLogServiceImpl(new vn.edu.ute.carsalesms.dao.impl.AuditLogDaoImpl(), sDao);
-        vn.edu.ute.carsalesms.service.WarrantyService wService = new vn.edu.ute.carsalesms.service.impl.WarrantyServiceImpl(wDao, oDao, auditService);
-
         wrapper.add(headerCard, BorderLayout.NORTH);
-        wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(wService), BorderLayout.CENTER);
+        wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(warrantyService), BorderLayout.CENTER);
         return wrapper;
     }
 

@@ -1,31 +1,21 @@
 package vn.edu.ute.carsalesms.service.impl;
 
-import vn.edu.ute.carsalesms.dao.InstallmentPlanDao;
-import vn.edu.ute.carsalesms.dao.InvoiceDao;
 import vn.edu.ute.carsalesms.dao.PaymentDao;
 import vn.edu.ute.carsalesms.dao.SaleOrderDao;
 import vn.edu.ute.carsalesms.model.dto.PaymentItem;
 import vn.edu.ute.carsalesms.model.dto.PaymentRequest;
-import vn.edu.ute.carsalesms.model.entity.InstallmentPlan;
-import vn.edu.ute.carsalesms.model.entity.Invoice;
 import vn.edu.ute.carsalesms.model.entity.Payment;
 import vn.edu.ute.carsalesms.model.entity.SaleOrder;
-import vn.edu.ute.carsalesms.model.enums.InstallmentStatus;
-import vn.edu.ute.carsalesms.model.enums.InvoiceStatus;
-import vn.edu.ute.carsalesms.model.enums.OrderStatus;
-import vn.edu.ute.carsalesms.model.enums.PaymentMethod;
-import vn.edu.ute.carsalesms.model.enums.PaymentStatus;
+import vn.edu.ute.carsalesms.service.PaymentRecordFactory;
+import vn.edu.ute.carsalesms.service.PaymentInstallmentPlanService;
+import vn.edu.ute.carsalesms.service.PaymentOrderFinalizationService;
 import vn.edu.ute.carsalesms.service.PaymentService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.service.PaymentValidationService;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Objects;
 
 /**
  * Cài đặt PaymentService: xử lý logic thanh toán đơn bán và sinh Hóa Đơn.
@@ -34,14 +24,27 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentDao paymentDao;
     private final SaleOrderDao orderDao;
-    private final InvoiceDao invoiceDao;
-    private final InstallmentPlanDao installmentPlanDao;
+    private final UserSessionContext sessionContext;
+    private final PaymentValidationService paymentValidationService;
+    private final PaymentInstallmentPlanService paymentInstallmentPlanService;
+    private final PaymentOrderFinalizationService paymentOrderFinalizationService;
+    private final PaymentRecordFactory paymentRecordFactory;
 
-    public PaymentServiceImpl(PaymentDao paymentDao, SaleOrderDao orderDao, InvoiceDao invoiceDao, InstallmentPlanDao installmentPlanDao) {
-        this.paymentDao = paymentDao;
-        this.orderDao = orderDao;
-        this.invoiceDao = invoiceDao;
-        this.installmentPlanDao = installmentPlanDao;
+
+    public PaymentServiceImpl(PaymentDao paymentDao,
+                              SaleOrderDao orderDao,
+                              UserSessionContext sessionContext,
+                              PaymentValidationService paymentValidationService,
+                              PaymentInstallmentPlanService paymentInstallmentPlanService,
+                              PaymentOrderFinalizationService paymentOrderFinalizationService,
+                              PaymentRecordFactory paymentRecordFactory) {
+        this.paymentDao = Objects.requireNonNull(paymentDao, "paymentDao is required");
+        this.orderDao = Objects.requireNonNull(orderDao, "orderDao is required");
+        this.sessionContext = Objects.requireNonNull(sessionContext, "sessionContext is required");
+        this.paymentValidationService = Objects.requireNonNull(paymentValidationService, "paymentValidationService is required");
+        this.paymentInstallmentPlanService = Objects.requireNonNull(paymentInstallmentPlanService, "paymentInstallmentPlanService is required");
+        this.paymentOrderFinalizationService = Objects.requireNonNull(paymentOrderFinalizationService, "paymentOrderFinalizationService is required");
+        this.paymentRecordFactory = Objects.requireNonNull(paymentRecordFactory, "paymentRecordFactory is required");
     }
 
     @Override
@@ -50,163 +53,30 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("Đơn bán không tồn tại."));
         assertOrderAccess(order);
         List<Payment> list = paymentDao.findByOrderId(orderId);
-        return list.stream().map(this::mapToItem).collect(Collectors.toList());
+        return list.stream().map(this::mapToItem).toList();
     }
 
     @Override
     public void addPayment(PaymentRequest request) {
-        if (request.amount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0.");
-        }
-
         SaleOrder order = orderDao.findById(request.orderId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn bán không tồn tại."));
         assertOrderAccess(order);
 
-        // Lấy dư nợ (Tính tổng đã trả để so sánh trước khi cho lưu Payment mới)
         BigDecimal totalPaidSoFar = paymentDao.sumCompletedByOrderId(order.getId());
-        BigDecimal currentRemaining = order.getFinalAmount().subtract(totalPaidSoFar);
+        paymentValidationService.validate(request, order, totalPaidSoFar);
 
-        // --- VALIDATION SỐ 1: Số tiền không được đóng vượt dư nợ (CẤM NGOẠI TRỪ TRẢ GÓP KỲ SAU) ---
-        // Tại sao ngoại trừ TRẢ GÓP (Installment): Vì lúc Trả Góp từng kỳ hệ thống tự bóc tách Lãi Phạt Trễ và Phạt Vượt Hạn để thêm vào Payment. Do đó Tổng Thu có Quyền Lớn Hơn Giá Xe (FinalAmount).
-        if (request.paymentMethod() != PaymentMethod.INSTALLMENT && request.amount().compareTo(currentRemaining) > 0) {
-            throw new IllegalArgumentException(String.format("Không hợp lệ! Vượt quá dư nợ tổng đơn (Bạn đang gõ đóng: %,.0f đ, trong khi Đơn chỉ cần trả: %,.0f đ)", request.amount(), currentRemaining));
-        }
-
-        // --- VALIDATION SỐ 2: Muốn tạo Trả Góp thì cọc phải bé hơn Total, chứ đóng cọc bằng Total thì còn dư nợ đâu mà chia tháng? ---
-        if (request.paymentMethod() == PaymentMethod.INSTALLMENT && request.installmentMonths() != null && request.installmentMonths() > 0) {
-            if (request.amount().compareTo(currentRemaining) >= 0) {
-                throw new IllegalArgumentException("Khởi tạo Trả Góp lặp lỗi: Số tiền cọc đợt đầu phải BÉ HƠN dư nợ cuối để hệ thống rải đều những tháng còn lại!");
-            }
-        }
-
-        // Nếu thanh toán qua giao diện Trả Góp (Method = INSTALLMENT từ InstallmentService dội sang)
-        // thì bỏ qua kiểm tra PAID (Chữa cháy cho Seed Data cũ thường hay set Order là PAID dù còn dư nợ).
-        if (order.getOrderStatus() == OrderStatus.PAID && request.paymentMethod() != PaymentMethod.INSTALLMENT) {
-            throw new IllegalStateException("Đơn đã thanh toán đầy đủ, không thể tạo thanh toán mới.");
-        }
-        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-            throw new IllegalStateException("Đơn đã bị hủy.");
-        }
-
-        // Tạo Entity Payment mới
-        Payment pm = new Payment();
-        pm.setPaymentCode(generateCode("PM-"));
-        pm.setSaleOrder(order);
-        pm.setPaymentDate(LocalDateTime.now());
-        pm.setAmount(request.amount());
-        pm.setPaymentMethod(request.paymentMethod());
-        pm.setPaymentStatus(PaymentStatus.COMPLETED); // Tạm coi giao dịch thành công ngay lập tức
-        pm.setTransactionReference(request.transactionReference());
-        pm.setNote(request.note());
-
+        Payment pm = paymentRecordFactory.create(order, request);
         paymentDao.save(pm); // Lưu thanh toán
 
         // Sau khi lưu, tính tổng đã thanh toán
         BigDecimal totalPaid = paymentDao.sumCompletedByOrderId(order.getId());
 
-        // Kiểm tra logic Trả góp: Lần đầu tiên thanh toán nếu là INSTALLMENT thì tạo Plan
-        if (request.paymentMethod() == PaymentMethod.INSTALLMENT &&
-            request.installmentMonths() != null && request.installmentMonths() > 0) {
-
-            // Tìm thử xem đã có Plan nào chưa
-            List<InstallmentPlan> existingPlans = installmentPlanDao.findByOrderId(order.getId());
-            if (existingPlans.isEmpty()) {
-                BigDecimal remaining = order.getFinalAmount().subtract(totalPaid);
-                if (remaining.compareTo(BigDecimal.ZERO) > 0) {
-                    // Cập nhật trạng thái đơn thành CONFIRMED thay vì PENDING
-                    order.setOrderStatus(OrderStatus.CONFIRMED);
-
-                    int months = request.installmentMonths();
-                    BigDecimal perMonthAmount = remaining.divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP);
-
-                    // Tạo danh sách Plan bằng Stream API
-                    List<InstallmentPlan> newPlans = IntStream.rangeClosed(1, months)
-                            .mapToObj(i -> {
-                                BigDecimal dueAmount = (i == months) ?
-                                    remaining.subtract(perMonthAmount.multiply(BigDecimal.valueOf(months - 1))) : perMonthAmount;
-
-                                return new InstallmentPlan(
-                                        order,
-                                        i,
-                                        LocalDate.now().plusMonths(i),
-                                        dueAmount,
-                                        BigDecimal.ZERO,
-                                        InstallmentStatus.UNPAID,
-                                        "Tạo tự động"
-                                );
-                            })
-                            .collect(Collectors.toList());
-
-                    installmentPlanDao.saveAll(newPlans);
-                }
-            }
-        }
-
-        // Cập nhật trạng thái PAID nếu đã đủ
-        if (totalPaid.compareTo(order.getFinalAmount()) >= 0) {
-            order.setOrderStatus(OrderStatus.PAID);
-            createInvoiceIfAbsent(order);
-            activateWarrantyForPaidOrder(order); // Tự động sinh Warranty
-        } else if (order.getOrderStatus() == OrderStatus.PENDING && totalPaid.compareTo(BigDecimal.ZERO) > 0) {
-            order.setOrderStatus(OrderStatus.CONFIRMED);
-        }
+        paymentInstallmentPlanService.createInitialPlansIfNeeded(order, request, totalPaid);
+        paymentOrderFinalizationService.finalizeAfterPayment(order, totalPaid);
 
         orderDao.save(order);
     }
 
-    /**
-     * Tự động sinh Hóa đơn khi đạt trạng thái PAID.
-     */
-    private void createInvoiceIfAbsent(SaleOrder order) {
-        if (invoiceDao.findByOrderId(order.getId()).isPresent()) {
-            return; // Đã sinh hóa đơn
-        }
-
-        // Chuẩn hóa công thức hóa đơn: Tổng thanh toán = Tiền trước thuế + Thuế - Giảm giá.
-        BigDecimal preTaxAmount = order.getTotalAmount() == null ? BigDecimal.ZERO : order.getTotalAmount();
-        BigDecimal discountAmount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
-        BigDecimal tenPercent = new BigDecimal("0.10");
-        BigDecimal taxAmount = preTaxAmount.multiply(tenPercent);
-        BigDecimal totalWithTax = preTaxAmount.add(taxAmount).subtract(discountAmount);
-        if (totalWithTax.compareTo(BigDecimal.ZERO) < 0) {
-            totalWithTax = BigDecimal.ZERO;
-        }
-
-        Invoice inv = new Invoice();
-        inv.setInvoiceCode(generateCode("INV-"));
-        inv.setSaleOrder(order);
-        inv.setIssuedDate(LocalDateTime.now());
-        inv.setInvoiceStatus(InvoiceStatus.ISSUED);
-        inv.setTaxAmount(taxAmount);
-        inv.setTotalAmount(totalWithTax);
-        inv.setNote("Tự động sinh khi thanh toán đủ. Đơn: " + order.getOrderCode());
-
-        invoiceDao.save(inv);
-    }
-
-    /**
-     * Tự dộng kích hoạt Phiếu bảo hành 3 năm Điện tử cho các xe trong Đơn.
-     */
-    private void activateWarrantyForPaidOrder(SaleOrder order) {
-        vn.edu.ute.carsalesms.dao.WarrantyDao tmpDao = new vn.edu.ute.carsalesms.dao.impl.WarrantyDaoImpl();
-        try {
-            for (vn.edu.ute.carsalesms.model.entity.SaleOrderDetail sod : order.getSaleOrderDetails()) {
-                if (!tmpDao.findBySaleOrderDetailId(sod.getId()).isPresent()) {
-                    vn.edu.ute.carsalesms.model.entity.Warranty w = new vn.edu.ute.carsalesms.model.entity.Warranty();
-                    w.setWarrantyCode("WR-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-                    w.setSaleOrderDetail(sod);
-                    w.setStartDate(java.time.LocalDate.now());
-                    w.setEndDate(java.time.LocalDate.now().plusYears(3));
-                    w.setWarrantyStatus(vn.edu.ute.carsalesms.model.enums.WarrantyStatus.ACTIVE);
-                    w.setNote("Kích hoạt Bảo Hành Tự Động do Đơn thanh toán Xong (PAID).");
-                    tmpDao.save(w);
-                }
-            }
-        } catch (Exception ex) {
-            System.err.println("Lỗi Auto-Generate Warranty: " + ex.getMessage());
-        }
-    }
 
     private PaymentItem mapToItem(Payment p) {
         return new PaymentItem(
@@ -223,11 +93,6 @@ public class PaymentServiceImpl implements PaymentService {
         );
     }
 
-    /** Helper sinh mã bằng UUID cắt ngắn. */
-    private String generateCode(String prefix) {
-        String uuidPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return prefix + uuidPart;
-    }
 
     private void assertOrderAccess(SaleOrder order) {
         Long branchId = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
@@ -236,6 +101,6 @@ public class PaymentServiceImpl implements PaymentService {
         String branchName = order == null || order.getStaff() == null || order.getStaff().getBranch() == null
                 ? null
                 : order.getStaff().getBranch().getBranchName();
-        CurrentSession.assertBranchAccess(branchId, branchName);
+        sessionContext.assertBranchAccess(branchId, branchName);
     }
 }

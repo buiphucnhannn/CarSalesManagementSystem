@@ -1,13 +1,8 @@
 package vn.edu.ute.carsalesms.view.component;
 
-import vn.edu.ute.carsalesms.dao.CarDao;
-import vn.edu.ute.carsalesms.dao.CustomerDao;
-import vn.edu.ute.carsalesms.dao.StaffDao;
+import vn.edu.ute.carsalesms.model.dto.TestDriveBookingMetadata;
 import vn.edu.ute.carsalesms.model.dto.TestDriveItem;
 import vn.edu.ute.carsalesms.model.dto.TestDriveRequest;
-import vn.edu.ute.carsalesms.model.entity.Car;
-import vn.edu.ute.carsalesms.model.entity.Customer;
-import vn.edu.ute.carsalesms.model.entity.Staff;
 import vn.edu.ute.carsalesms.model.enums.TestDriveStatus;
 import vn.edu.ute.carsalesms.service.TestDriveService;
 import vn.edu.ute.carsalesms.view.theme.DialogUiUtil;
@@ -28,20 +23,14 @@ public class TestDrivePanel extends JPanel {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     
     private final TestDriveService testDriveService;
-    private final CustomerDao customerDao;
-    private final CarDao carDao;
-    private final StaffDao staffDao;
 
     private final JTextField txtSearch = new JTextField(20);
     private final DefaultTableModel tableModel;
     private final JTable table;
     private List<TestDriveItem> rowData;
 
-    public TestDrivePanel(TestDriveService testDriveService, CustomerDao customerDao, CarDao carDao, StaffDao staffDao) {
+    public TestDrivePanel(TestDriveService testDriveService) {
         this.testDriveService = testDriveService;
-        this.customerDao = customerDao;
-        this.carDao = carDao;
-        this.staffDao = staffDao;
 
         setLayout(new BorderLayout(8, 8));
         setOpaque(false);
@@ -159,7 +148,8 @@ public class TestDrivePanel extends JPanel {
     }
 
     private void showBookDialog() {
-        TestDriveDialog dialog = new TestDriveDialog(getDialogWindow(), customerDao, carDao, staffDao);
+        TestDriveBookingMetadata metadata = testDriveService.getBookingMetadata();
+        TestDriveDialog dialog = new TestDriveDialog(getDialogWindow(), metadata);
         dialog.setVisible(true);
 
         dialog.getResult().ifPresent(req -> {
@@ -277,13 +267,12 @@ public class TestDrivePanel extends JPanel {
 
         private TestDriveRequest result;
 
-        public TestDriveDialog(Window owner, CustomerDao customerDao, CarDao carDao, StaffDao staffDao) {
+        public TestDriveDialog(Window owner, TestDriveBookingMetadata metadata) {
             super(owner, "Đăng Ký Hệ Thống Lái Mẫu Xe", ModalityType.APPLICATION_MODAL);
 
-            // Load Data
-            customerDao.findCustomers(null).forEach(c -> cbCustomer.addItem(new CustomerComboItem(c)));
-            carDao.findCars(null, null).forEach(c -> cbCar.addItem(new CarComboItem(c)));
-            staffDao.findStaffs(null, null).forEach(s -> cbStaff.addItem(new StaffComboItem(s)));
+            metadata.customers().forEach(c -> cbCustomer.addItem(new CustomerComboItem(c.id(), c.displayName())));
+            metadata.cars().forEach(c -> cbCar.addItem(new CarComboItem(c.id(), c.displayName())));
+            metadata.staffs().forEach(s -> cbStaff.addItem(new StaffComboItem(s.id(), s.displayName())));
 
             JPanel form = new JPanel(new GridLayout(5, 2, 10, 10));
             form.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -339,15 +328,12 @@ public class TestDrivePanel extends JPanel {
         
         // Vài class bọc ID cho Combobox
         private record CustomerComboItem(Long id, String name) {
-            public CustomerComboItem(Customer c) { this(c.getId(), c.getFullName() + " (" + c.getPhone() + ")"); }
             @Override public String toString() { return name; }
         }
         private record CarComboItem(Long id, String name) {
-            public CarComboItem(Car c) { this(c.getId(), c.getCarName() + " - " + c.getColor()); }
             @Override public String toString() { return name; }
         }
         private record StaffComboItem(Long id, String name) {
-            public StaffComboItem(Staff s) { this(s.getId(), s.getFullName() + " (MS:" + s.getStaffCode() + ")"); }
             @Override public String toString() { return name; }
         }
     }

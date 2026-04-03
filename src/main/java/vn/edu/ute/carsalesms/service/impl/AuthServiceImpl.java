@@ -8,10 +8,12 @@ import vn.edu.ute.carsalesms.model.enums.StaffRole;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.AuditLogService;
 import vn.edu.ute.carsalesms.service.AuthService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.AuthSessionStore;
+import vn.edu.ute.carsalesms.session.CurrentAuthSessionStore;
 import vn.edu.ute.carsalesms.util.PasswordUtil;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 public class AuthServiceImpl implements AuthService {
 
@@ -19,14 +21,22 @@ public class AuthServiceImpl implements AuthService {
 
     private final AccountDao accountDao;
     private final AuditLogService auditLogService;
+    private final AuthSessionStore authSessionStore;
 
     public AuthServiceImpl(AccountDao accountDao) {
-        this(accountDao, new NoOpAuditLogService());
+        this(accountDao, new NoOpAuditLogService(), new CurrentAuthSessionStore());
     }
 
     public AuthServiceImpl(AccountDao accountDao, AuditLogService auditLogService) {
-        this.accountDao = accountDao;
-        this.auditLogService = auditLogService;
+        this(accountDao, auditLogService, new CurrentAuthSessionStore());
+    }
+
+    public AuthServiceImpl(AccountDao accountDao,
+                           AuditLogService auditLogService,
+                           AuthSessionStore authSessionStore) {
+        this.accountDao = Objects.requireNonNull(accountDao, "accountDao is required");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService is required");
+        this.authSessionStore = Objects.requireNonNull(authSessionStore, "authSessionStore is required");
     }
 
     @Override
@@ -66,7 +76,7 @@ public class AuthServiceImpl implements AuthService {
         Account savedAccount = accountDao.save(account);
 
         AuthenticatedUser user = toAuthenticatedUser(savedAccount);
-        CurrentSession.setCurrentUser(user);
+        authSessionStore.setCurrentUser(user);
         auditLogService.logByStaffId(
                 user.staffId(),
                 "LOGIN_SUCCESS",

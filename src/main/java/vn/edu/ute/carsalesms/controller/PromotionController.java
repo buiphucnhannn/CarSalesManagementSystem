@@ -3,8 +3,8 @@ package vn.edu.ute.carsalesms.controller;
 import vn.edu.ute.carsalesms.model.dto.PromotionItem;
 import vn.edu.ute.carsalesms.model.dto.PromotionRequest;
 import vn.edu.ute.carsalesms.service.AuditLogService;
+import vn.edu.ute.carsalesms.service.NoOpAuditLogService;
 import vn.edu.ute.carsalesms.service.PromotionService;
-import vn.edu.ute.carsalesms.service.impl.NoOpAuditLogService;
 
 import java.util.List;
 import java.util.Objects;

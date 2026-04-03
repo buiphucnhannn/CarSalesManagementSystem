@@ -6,12 +6,14 @@ import vn.edu.ute.carsalesms.model.entity.*;
 import vn.edu.ute.carsalesms.model.enums.OrderStatus;
 import vn.edu.ute.carsalesms.model.enums.Status;
 import vn.edu.ute.carsalesms.service.SaleOrderService;
-import vn.edu.ute.carsalesms.session.CurrentSession;
+import vn.edu.ute.carsalesms.session.CurrentSessionContextAdapter;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,20 +27,31 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     private final CustomerDao customerDao;
     private final StaffDao staffDao;
     private final PromotionDao promotionDao;
+    private final UserSessionContext sessionContext;
 
     public SaleOrderServiceImpl(SaleOrderDao orderDao, CarDao carDao, CustomerDao customerDao, StaffDao staffDao, PromotionDao promotionDao) {
+        this(orderDao, carDao, customerDao, staffDao, promotionDao, new CurrentSessionContextAdapter());
+    }
+
+    public SaleOrderServiceImpl(SaleOrderDao orderDao,
+                                CarDao carDao,
+                                CustomerDao customerDao,
+                                StaffDao staffDao,
+                                PromotionDao promotionDao,
+                                UserSessionContext sessionContext) {
         this.orderDao = orderDao;
         this.carDao = carDao;
         this.customerDao = customerDao;
         this.staffDao = staffDao;
         this.promotionDao = promotionDao;
+        this.sessionContext = Objects.requireNonNull(sessionContext, "sessionContext is required");
     }
 
     @Override
     public List<SaleOrderItem> findOrders(String keyword, OrderStatus statusFilter) {
         List<SaleOrder> orders = orderDao.findOrders(keyword, statusFilter);
-        if (!CurrentSession.isAdmin()) {
-            Long sessionBranchId = CurrentSession.currentBranchId();
+        if (!sessionContext.isAdmin()) {
+            Long sessionBranchId = sessionContext.currentBranchId();
             if (sessionBranchId != null) {
                 orders = orders.stream()
                         .filter(order -> resolveOrderBranchId(order) != null && sessionBranchId.equals(resolveOrderBranchId(order)))
@@ -71,7 +84,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
 
     @Override
     public SaleOrderMetadata loadMetadata() {
-        Long sessionBranchId = CurrentSession.currentBranchId();
+        Long sessionBranchId = sessionContext.currentBranchId();
 
         // Lấy KH
         List<CarLookupItem> customers = customerDao.findCustomers(null).stream()
@@ -80,7 +93,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
 
         // Lấy Staff (ACTIVE)
         List<CarLookupItem> staffs = staffDao.findStaffs(null, Status.ACTIVE).stream()
-                .filter(s -> CurrentSession.isAdmin() || (s.getBranch() != null && sessionBranchId != null && sessionBranchId.equals(s.getBranch().getId())))
+                .filter(s -> sessionContext.isAdmin() || (s.getBranch() != null && sessionBranchId != null && sessionBranchId.equals(s.getBranch().getId())))
                 .map(s -> new CarLookupItem(s.getId(), s.getStaffCode(), s.getFullName()))
                 .collect(Collectors.toList());
 
@@ -92,7 +105,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         // Lấy Các Xe đang bán còn hàng (avail > 0)
         List<CarLookupItem> cars = carDao.findCars(null, Status.ACTIVE).stream()
                 .filter(c -> c.getAvailableQuantity() > 0)
-                .filter(c -> CurrentSession.isAdmin() || (c.getBranch() != null && sessionBranchId != null && sessionBranchId.equals(c.getBranch().getId())))
+                .filter(c -> sessionContext.isAdmin() || (c.getBranch() != null && sessionBranchId != null && sessionBranchId.equals(c.getBranch().getId())))
                 .map(c -> new CarLookupItem(c.getId(), c.getCarCode(), c.getCarName() + " - " + c.getColor() + " (" + c.getSalePrice() + ")"))
                 .collect(Collectors.toList());
 
@@ -110,7 +123,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
                 .orElseThrow(() -> new IllegalArgumentException("Khách hàng không tồn tại."));
         Staff staff = staffDao.findStaffById(request.staffId())
                 .orElseThrow(() -> new IllegalArgumentException("Nhân viên duyệt đơn không tồn tại."));
-        CurrentSession.assertBranchAccess(
+        sessionContext.assertBranchAccess(
                 staff.getBranch() == null ? null : staff.getBranch().getId(),
                 staff.getBranch() == null ? null : staff.getBranch().getBranchName()
         );
@@ -146,7 +159,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         for (OrderDetailRequest detailReq : request.details()) {
             Car car = carDao.findById(detailReq.carId())
                     .orElseThrow(() -> new IllegalArgumentException("Xe không tồn tại."));
-            CurrentSession.assertBranchAccess(
+            sessionContext.assertBranchAccess(
                     car.getBranch() == null ? null : car.getBranch().getId(),
                     car.getBranch() == null ? null : car.getBranch().getBranchName()
             );
@@ -256,7 +269,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     }
 
     private void assertOrderAccess(SaleOrder order) {
-        CurrentSession.assertBranchAccess(resolveOrderBranchId(order), resolveOrderBranchName(order));
+        sessionContext.assertBranchAccess(resolveOrderBranchId(order), resolveOrderBranchName(order));
     }
 
     private Long resolveOrderBranchId(SaleOrder order) {
