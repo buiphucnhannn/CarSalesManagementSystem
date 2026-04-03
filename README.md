@@ -15,7 +15,7 @@
 
 <p align="center">
   <em>Đồ án cuối kỳ môn Ngôn Ngữ Lập Trình Tiên Tiến</em><br/>
-  <em>Trường Đại học Sư phạm Kỹ thuật TP.HCM (UTE)</em>
+  <em>Trường Đại học Công nghệ Kỹ thuật TP.HCM (UTE)</em>
 </p>
 
 ---
@@ -368,7 +368,7 @@ CarSalesMS/
 
 ## 📄 License
 
-Dự án này được phát triển phục vụ mục đích học tập tại **Trường Đại học Sư phạm Kỹ thuật TP.HCM (UTE)**.
+Dự án này được phát triển phục vụ mục đích học tập tại **Trường Đại học Công nghệ Kỹ thuật TP.HCM (UTE)**.
 
 ---
 
