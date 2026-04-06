@@ -7,21 +7,22 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Record hiển thị thông tin tóm tắt của một đơn bán trong bảng danh sách.
- * Chỉ đọc (read-only) – dùng để render bảng, không dùng để persist.
+ * DTO (Data Transfer Object) dạng record, được sử dụng để hiển thị thông tin tóm tắt của một đơn hàng trong bảng danh sách.
+ * Đây là đối tượng chỉ đọc, tổng hợp dữ liệu từ nhiều thực thể (SaleOrder, Customer, Staff, Promotion) để tiện cho việc hiển thị.
+ * Nó không được dùng để lưu trữ hay cập nhật dữ liệu.
  *
- * @param id            khoá chính
- * @param orderCode     mã đơn bán (duy nhất)
- * @param customerName  tên khách hàng
- * @param staffName     tên nhân viên lập đơn
- * @param promotionCode mã khuyến mãi áp dụng (null nếu không có)
- * @param orderDate     ngày lập đơn
- * @param totalAmount   tổng tiền trước giảm
- * @param discountAmount tiền được giảm
- * @param finalAmount   số tiền thực phải trả
- * @param paymentMethod phương thức thanh toán
- * @param orderStatus   trạng thái đơn
- * @param note          ghi chú
+ * @param id            Khóa chính của đơn hàng.
+ * @param orderCode     Mã đơn hàng (duy nhất).
+ * @param customerName  Tên của khách hàng đặt hàng.
+ * @param staffName     Tên của nhân viên tạo đơn hàng.
+ * @param promotionCode Mã của chương trình khuyến mãi được áp dụng (có thể là null nếu không có).
+ * @param orderDate     Ngày và giờ tạo đơn hàng.
+ * @param totalAmount   Tổng giá trị của đơn hàng trước khi áp dụng giảm giá.
+ * @param discountAmount Số tiền được giảm giá.
+ * @param finalAmount   Số tiền cuối cùng mà khách hàng phải trả.
+ * @param paymentMethod Phương thức thanh toán chính của đơn hàng.
+ * @param orderStatus   Trạng thái hiện tại của đơn hàng (ví dụ: PENDING, COMPLETED, CANCELLED).
+ * @param note          Ghi chú của đơn hàng.
  */
 public record SaleOrderItem(
         Long id,

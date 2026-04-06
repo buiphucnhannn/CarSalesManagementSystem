@@ -14,9 +14,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Controller (MVC) cho module Quản lý Nhân viên và Tài khoản.
- * Là lớp trung gian mỏng giữa View và Service.
- * Không chứa logic nghiệp vụ – tuân thủ Single Responsibility Principle.
+ * StaffManagementController xử lý các yêu cầu liên quan đến quản lý nhân viên và tài khoản.
+ * Nó tuân theo Nguyên tắc Trách nhiệm Đơn lẻ (SRP) bằng cách chỉ tập trung vào logic quản lý nhân viên và tài khoản.
+ * Nó cũng tuân theo Nguyên tắc Đảo ngược Phụ thuộc (DIP) bằng cách phụ thuộc vào các giao diện
+ * (StaffService, AuditLogService) thay vì các triển khai cụ thể.
  */
 public class StaffManagementController {
 
@@ -24,10 +25,19 @@ public class StaffManagementController {
     private final StaffService staffService;
     private final AuditLogService auditLogService;
 
+    /**
+     * Xây dựng một StaffManagementController mới với StaffService đã cho.
+     * @param staffService dịch vụ sẽ được sử dụng để quản lý nhân viên.
+     */
     public StaffManagementController(StaffService staffService) {
         this(staffService, new NoOpAuditLogService());
     }
 
+    /**
+     * Xây dựng một StaffManagementController mới với StaffService và AuditLogService đã cho.
+     * @param staffService dịch vụ sẽ được sử dụng để quản lý nhân viên.
+     * @param auditLogService dịch vụ sẽ được sử dụng để ghi lại các hành động.
+     */
     public StaffManagementController(StaffService staffService, AuditLogService auditLogService) {
         this.staffService = Objects.requireNonNull(staffService, "staffService is required");
         this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService is required");

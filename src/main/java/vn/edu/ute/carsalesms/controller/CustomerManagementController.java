@@ -10,9 +10,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Controller (MVC) cho module Quản lý Khách hàng.
- * Vai trò: nhận lệnh từ View, chuyển tiếp đến Service, trả kết quả về View.
- * Không chứa logic nghiệp vụ – tuân thủ Single Responsibility Principle.
+ * CustomerManagementController xử lý các yêu cầu liên quan đến quản lý khách hàng.
+ * Nó tuân theo Nguyên tắc Trách nhiệm Đơn lẻ (SRP) bằng cách chỉ tập trung vào logic quản lý khách hàng.
+ * Nó cũng tuân theo Nguyên tắc Đảo ngược Phụ thuộc (DIP) bằng cách phụ thuộc vào các giao diện
+ * (CustomerService, AuditLogService) thay vì các triển khai cụ thể.
  */
 public class CustomerManagementController {
 
@@ -20,10 +21,19 @@ public class CustomerManagementController {
     private final CustomerService customerService;
     private final AuditLogService auditLogService;
 
+    /**
+     * Xây dựng một CustomerManagementController mới với CustomerService đã cho.
+     * @param customerService dịch vụ sẽ được sử dụng để quản lý khách hàng.
+     */
     public CustomerManagementController(CustomerService customerService) {
         this(customerService, new NoOpAuditLogService());
     }
 
+    /**
+     * Xây dựng một CustomerManagementController mới với CustomerService và AuditLogService đã cho.
+     * @param customerService dịch vụ sẽ được sử dụng để quản lý khách hàng.
+     * @param auditLogService dịch vụ sẽ được sử dụng để ghi lại các hành động.
+     */
     public CustomerManagementController(CustomerService customerService, AuditLogService auditLogService) {
         this.customerService = Objects.requireNonNull(customerService, "customerService is required");
         this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService is required");
@@ -39,6 +49,10 @@ public class CustomerManagementController {
         return customerService.getCustomers(keyword);
     }
 
+    /**
+     * Tải mã khách hàng tiếp theo.
+     * @return mã khách hàng tiếp theo.
+     */
     public String loadNextCustomerCode() {
         return customerService.getNextCustomerCode();
     }

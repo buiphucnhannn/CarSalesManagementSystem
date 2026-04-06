@@ -49,6 +49,8 @@ import vn.edu.ute.carsalesms.view.theme.LookAndFeelConfig;
 
 /**
  * Lớp khởi chạy ứng dụng.
+ * Chịu trách nhiệm khởi tạo tất cả các phụ thuộc, hiển thị màn hình đăng nhập và sau đó mở bảng điều khiển thích hợp
+ * dựa trên vai trò của người dùng.
  */
 public class AppLauncher {
 

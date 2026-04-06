@@ -14,7 +14,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Lớp triển khai cho DashboardDao, cung cấp các truy vấn tổng hợp dữ liệu
+ * để hiển thị trên các bảng điều khiển (dashboard).
+ */
 public class DashboardDaoImpl implements DashboardDao {
+
+    // --- Triển khai cho Dashboard của Nhân viên ---
 
     @Override
     public long countOrdersByStaffAndStatuses(Long staffId, List<OrderStatus> statuses) {
@@ -35,6 +41,7 @@ public class DashboardDaoImpl implements DashboardDao {
     public BigDecimal sumCompletedPaymentsByStaffInRange(Long staffId, LocalDateTime from, LocalDateTime to) {
         EntityManager entityManager = JpaUtil.getEntityManager();
         try {
+            // Sử dụng coalesce để đảm bảo trả về 0 thay vì null nếu không có kết quả.
             return entityManager.createQuery(
                             "select coalesce(sum(p.amount), 0) from Payment p " +
                                     "where p.saleOrder.staff.id = :staffId " +
@@ -72,6 +79,7 @@ public class DashboardDaoImpl implements DashboardDao {
     public long countWarrantiesByStaffAndStatus(Long staffId, WarrantyStatus status) {
         EntityManager entityManager = JpaUtil.getEntityManager();
         try {
+            // Cần join qua nhiều bảng để từ Warranty đến được Staff.
             return entityManager.createQuery(
                             "select count(w.id) from Warranty w " +
                                     "join w.saleOrderDetail d " +
@@ -89,6 +97,7 @@ public class DashboardDaoImpl implements DashboardDao {
     public List<DashboardTaskItem> findOrderTasksByStaff(Long staffId, int limit) {
         EntityManager entityManager = JpaUtil.getEntityManager();
         try {
+            // Truy vấn lấy các trường cần thiết và sau đó map kết quả sang DTO.
             return entityManager.createQuery(
                             "select so.orderCode, c.fullName, so.orderDate, so.orderStatus " +
                                     "from SaleOrder so " +
@@ -99,7 +108,7 @@ public class DashboardDaoImpl implements DashboardDao {
                     .setParameter("statuses", List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED))
                     .setMaxResults(limit)
                     .getResultStream()
-                    .map(row -> new DashboardTaskItem(
+                    .map(row -> new DashboardTaskItem( // Chuyển đổi mảng Object[] thành DTO
                             "Đơn " + row[0],
                             (String) row[1],
                             (LocalDateTime) row[2],
@@ -139,6 +148,8 @@ public class DashboardDaoImpl implements DashboardDao {
             entityManager.close();
         }
     }
+
+    // --- Triển khai cho Dashboard của Quản trị viên (Admin) ---
 
     @Override
     public BigDecimal sumCompletedPaymentsInRange(LocalDateTime from, LocalDateTime to) {
@@ -203,6 +214,7 @@ public class DashboardDaoImpl implements DashboardDao {
     public List<AdminRecentOrderItem> findRecentOrders(int limit) {
         EntityManager entityManager = JpaUtil.getEntityManager();
         try {
+            // Truy vấn này phức tạp hơn vì cần lấy tên xe đầu tiên trong đơn hàng.
             return entityManager.createQuery(
                             "select so.orderCode, c.fullName, coalesce(min(car.carName), 'N/A'), so.orderStatus " +
                                     "from SaleOrder so " +
@@ -225,4 +237,3 @@ public class DashboardDaoImpl implements DashboardDao {
         }
     }
 }
-

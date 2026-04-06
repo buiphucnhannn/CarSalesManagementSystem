@@ -6,7 +6,18 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Record DTO cho dữ liệu hiển thị một kỳ đóng tiền trả góp.
+ * DTO (Data Transfer Object) dạng record, dùng để hiển thị thông tin của một kỳ hạn thanh toán trong kế hoạch trả góp.
+ *
+ * @param id              Khóa chính của kỳ hạn.
+ * @param saleOrderId     ID của đơn hàng trả góp.
+ * @param orderCode       Mã của đơn hàng trả góp.
+ * @param customerName    Tên của khách hàng.
+ * @param installmentNo   Số thứ tự của kỳ hạn (ví dụ: kỳ 1, kỳ 2).
+ * @param dueDate         Ngày đến hạn thanh toán của kỳ này.
+ * @param amount          Số tiền phải trả cho kỳ này.
+ * @param paidAmount      Số tiền đã thực trả cho kỳ này.
+ * @param status          Trạng thái của kỳ hạn (ví dụ: UNPAID, PAID, OVERDUE).
+ * @param note            Ghi chú cho kỳ hạn.
  */
 public record InstallmentItem(
         Long id,
@@ -21,7 +32,8 @@ public record InstallmentItem(
         String note
 ) {
     /**
-     * Số tiền còn nợ của kỳ này
+     * Phương thức tiện ích để tính toán số tiền còn lại phải trả cho kỳ hạn này.
+     * @return Số tiền còn nợ (amount - paidAmount).
      */
     public BigDecimal getDueRemaining() {
         return amount.subtract(paidAmount);

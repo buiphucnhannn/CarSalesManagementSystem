@@ -8,56 +8,85 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity đại diện cho bảng branches.
- * Lưu thông tin chi nhánh/showroom của hệ thống.
+ * Lớp Entity, đại diện cho bảng `branches` trong cơ sở dữ liệu.
+ * Lưu trữ thông tin chi tiết về các chi nhánh hoặc showroom của hệ thống.
  */
 @Entity
 @Table(name = "branches")
 public class Branch {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã chi nhánh, là một định danh duy nhất, không được null.
+     */
     @Column(name = "branch_code", nullable = false, unique = true, length = 50)
     private String branchCode;
 
+    /**
+     * Tên chi nhánh, không được null.
+     */
     @Column(name = "branch_name", nullable = false, length = 255)
     private String branchName;
 
+    /**
+     * Địa chỉ của chi nhánh.
+     */
     @Column(length = 500)
     private String address;
 
+    /**
+     * Số điện thoại liên hệ của chi nhánh.
+     */
     @Column(length = 20)
     private String phone;
 
+    /**
+     * Địa chỉ email của chi nhánh.
+     */
     @Column(length = 100)
     private String email;
 
+    /**
+     * Trạng thái hoạt động của chi nhánh (ví dụ: ACTIVE - đang hoạt động, INACTIVE - tạm ngừng).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một chi nhánh có thể có nhiều nhân viên.
+     * Mối quan hệ Một-Nhiều (One-to-Many) với thực thể Staff.
+     * Một chi nhánh có thể có nhiều nhân viên làm việc.
+     * `mappedBy = "branch"`: Mối quan hệ này được quản lý bởi thuộc tính `branch` trong lớp `Staff`.
      */
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY)
     private List<Staff> staffs = new ArrayList<>();
 
     /**
-     * Quan hệ một - nhiều:
-     * Một chi nhánh có thể quản lý nhiều xe.
+     * Mối quan hệ Một-Nhiều với thực thể Car.
+     * Một chi nhánh có thể quản lý tồn kho của nhiều mẫu xe.
      */
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY)
     private List<Car> cars = new ArrayList<>();
 
+    // Constructors, Getters, and Setters...
     public Branch() {
     }
 

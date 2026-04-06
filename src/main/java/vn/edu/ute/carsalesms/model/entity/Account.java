@@ -6,8 +6,8 @@ import vn.edu.ute.carsalesms.model.enums.Status;
 import java.time.LocalDateTime;
 
 /**
- * Entity dai dien cho bang accounts.
- * Tach thong tin dang nhap khoi staff de de quan ly bao mat va khoa tai khoan.
+ * Thực thể đại diện cho bảng `accounts`.
+ * Tách thông tin đăng nhập khỏi nhân viên để dễ quản lý bảo mật và khóa tài khoản.
  */
 @Entity
 @Table(name = "accounts")
@@ -124,4 +124,3 @@ public class Account {
         return updatedAt;
     }
 }
-

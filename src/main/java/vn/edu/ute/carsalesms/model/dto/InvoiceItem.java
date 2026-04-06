@@ -6,17 +6,18 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Record hiển thị thông tin hóa đơn được sinh ra khi đơn bán đã thanh toán đủ.
+ * DTO (Data Transfer Object) dạng record, được sử dụng để hiển thị thông tin của một hóa đơn.
+ * Hóa đơn thường được tạo ra sau khi một đơn hàng đã được thanh toán đầy đủ.
  *
- * @param id            khoá chính
- * @param invoiceCode   số hóa đơn (duy nhất)
- * @param orderId       id đơn bán tương ứng
- * @param orderCode     mã đơn bán tương ứng
- * @param issuedDate    ngày phát hành hóa đơn
- * @param taxAmount     thuế VAT (10% của finalAmount)
- * @param totalAmount   tổng tiền hóa đơn (finalAmount + taxAmount)
- * @param invoiceStatus trạng thái hóa đơn
- * @param note          ghi chú
+ * @param id            Khóa chính của hóa đơn.
+ * @param invoiceCode   Số hóa đơn (mã định danh duy nhất).
+ * @param orderId       ID của đơn hàng (SaleOrder) mà hóa đơn này được phát hành cho.
+ * @param orderCode     Mã của đơn hàng tương ứng.
+ * @param issuedDate    Ngày phát hành hóa đơn.
+ * @param taxAmount     Số tiền thuế (ví dụ: VAT 10%) được tính trên giá trị cuối cùng của đơn hàng.
+ * @param totalAmount   Tổng số tiền trên hóa đơn, bao gồm cả giá trị đơn hàng và thuế.
+ * @param invoiceStatus Trạng thái của hóa đơn (ví dụ: PENDING, PAID, CANCELLED).
+ * @param note          Ghi chú kèm theo hóa đơn.
  */
 public record InvoiceItem(
         Long id,

@@ -8,43 +8,66 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity đại diện cho bảng car_categories.
- * Lưu thông tin phân loại xe như Sedan, SUV, Hatchback...
+ * Lớp Entity, đại diện cho bảng `car_categories` trong cơ sở dữ liệu.
+ * Lưu trữ thông tin về các danh mục hoặc phân loại xe (ví dụ: Sedan, SUV, Hatchback).
  */
 @Entity
 @Table(name = "car_categories")
 public class CarCategory {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã danh mục, là một định danh duy nhất, không được null.
+     */
     @Column(name = "category_code", nullable = false, unique = true, length = 50)
     private String categoryCode;
 
+    /**
+     * Tên danh mục, cũng là duy nhất và không được null.
+     */
     @Column(name = "category_name", nullable = false, unique = true, length = 255)
     private String categoryName;
 
+    /**
+     * Mô tả chi tiết về danh mục.
+     */
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * Trạng thái của danh mục (ví dụ: ACTIVE, INACTIVE).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một danh mục xe có thể chứa nhiều xe.
+     * Mối quan hệ Một-Nhiều với thực thể Car.
+     * Một danh mục có thể bao gồm nhiều mẫu xe.
+     * `mappedBy = "category"`: Mối quan hệ này được quản lý bởi thuộc tính `category` trong lớp `Car`.
      */
     @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
     private List<Car> cars = new ArrayList<>();
 
+    // Constructors, Getters, and Setters...
     public CarCategory() {
     }
 

@@ -10,55 +10,89 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity đại diện cho bảng promotions.
- * Lưu thông tin các chương trình khuyến mãi áp dụng cho đơn bán.
+ * Lớp Entity, đại diện cho bảng `promotions` trong cơ sở dữ liệu.
+ * Lưu trữ thông tin về các chương trình khuyến mãi có thể được áp dụng cho các đơn hàng.
  */
 @Entity
 @Table(name = "promotions")
 public class Promotion {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã khuyến mãi, là một định danh duy nhất, không được null.
+     */
     @Column(name = "promotion_code", nullable = false, unique = true, length = 50)
     private String promotionCode;
 
+    /**
+     * Tên của chương trình khuyến mãi.
+     */
     @Column(name = "promotion_name", nullable = false, length = 255)
     private String promotionName;
 
+    /**
+     * Loại giảm giá (ví dụ: "PERCENTAGE" - phần trăm, "FIXED_AMOUNT" - số tiền cố định).
+     */
     @Column(name = "discount_type", nullable = false, length = 20)
     private String discountType;
 
+    /**
+     * Giá trị giảm giá. Có thể là tỷ lệ phần trăm hoặc một số tiền cụ thể.
+     */
     @Column(name = "discount_value", nullable = false, precision = 18, scale = 2)
     private BigDecimal discountValue = BigDecimal.ZERO;
 
+    /**
+     * Ngày bắt đầu áp dụng chương trình khuyến mãi.
+     */
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
+    /**
+     * Ngày kết thúc chương trình khuyến mãi.
+     */
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
+    /**
+     * Mô tả chi tiết về chương trình khuyến mãi.
+     */
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * Trạng thái của chương trình khuyến mãi (ví dụ: ACTIVE - đang chạy, INACTIVE - không hoạt động).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một chương trình khuyến mãi có thể áp dụng cho nhiều đơn bán.
+     * Mối quan hệ Một-Nhiều với thực thể SaleOrder.
+     * Một chương trình khuyến mãi có thể được áp dụng cho nhiều đơn hàng.
      */
     @OneToMany(mappedBy = "promotion", fetch = FetchType.LAZY)
     private List<SaleOrder> saleOrders = new ArrayList<>();
 
+    // Constructors, Getters, and Setters...
     public Promotion() {
     }
 

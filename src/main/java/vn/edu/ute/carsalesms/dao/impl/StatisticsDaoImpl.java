@@ -11,12 +11,19 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Lớp triển khai cho StatisticsDao, chứa các truy vấn JPQL phức tạp để tổng hợp dữ liệu thống kê.
+ */
 public class StatisticsDaoImpl implements StatisticsDao {
 
+    /**
+     * Tính tổng doanh thu. Có thể lọc theo nhân viên.
+     */
     @Override
     public BigDecimal sumRevenue(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
+            // Xây dựng JPQL động để thêm điều kiện lọc theo staffId nếu cần.
             String jpql = "select coalesce(sum(p.amount), 0) from Payment p " +
                     "where p.paymentStatus = :status and p.paymentDate >= :from and p.paymentDate < :to" +
                     (staffId != null ? " and p.saleOrder.staff.id = :staffId" : "");
@@ -33,6 +40,9 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Đếm số lượng đơn hàng. Có thể lọc theo nhân viên.
+     */
     @Override
     public long countOrders(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -52,6 +62,9 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Đếm số lượng đơn hàng đã thanh toán. Có thể lọc theo nhân viên.
+     */
     @Override
     public long countPaidOrders(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -72,10 +85,14 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Thống kê doanh thu theo từng ngày.
+     */
     @Override
     public List<Object[]> findDailyRevenue(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
+            // Sử dụng hàm 'date' của cơ sở dữ liệu để nhóm theo ngày.
             String jpql = "select function('date', p.paymentDate), coalesce(sum(p.amount), 0) " +
                     "from Payment p " +
                     "where p.paymentStatus = :status and p.paymentDate >= :from and p.paymentDate < :to" +
@@ -95,6 +112,9 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Thống kê số lượng đơn hàng theo từng ngày.
+     */
     @Override
     public List<Object[]> findDailyOrders(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -117,6 +137,9 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Thống kê phân bổ đơn hàng theo trạng thái.
+     */
     @Override
     public List<Object[]> findOrderStatusBreakdown(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -138,6 +161,9 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Thống kê phân bổ theo phương thức thanh toán.
+     */
     @Override
     public List<Object[]> findPaymentMethodBreakdown(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -160,10 +186,14 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Tìm các xe bán chạy nhất.
+     */
     @Override
     public List<Object[]> findTopCars(LocalDateTime fromInclusive, LocalDateTime toExclusive, Long staffId, int limit) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
+            // Truy vấn join qua chi tiết đơn hàng để tính tổng số lượng và doanh thu theo từng xe.
             String jpql = "select c.carCode, c.carName, coalesce(sum(d.quantity), 0), coalesce(sum(d.lineTotal), 0) " +
                     "from SaleOrderDetail d " +
                     "join d.saleOrder so " +
@@ -171,7 +201,7 @@ public class StatisticsDaoImpl implements StatisticsDao {
                     "where so.orderStatus = :paidStatus and so.orderDate >= :from and so.orderDate < :to" +
                     (staffId != null ? " and so.staff.id = :staffId " : " ") +
                     "group by c.id, c.carCode, c.carName " +
-                    "order by coalesce(sum(d.quantity), 0) desc";
+                    "order by coalesce(sum(d.quantity), 0) desc"; // Sắp xếp theo số lượng bán
             TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class)
                     .setParameter("paidStatus", OrderStatus.PAID)
                     .setParameter("from", fromInclusive)
@@ -186,10 +216,14 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 
+    /**
+     * Thống kê doanh thu theo từng chi nhánh.
+     */
     @Override
     public List<Object[]> findBranchRevenue(LocalDateTime fromInclusive, LocalDateTime toExclusive, int limit) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
+            // Truy vấn join từ Payment -> SaleOrder -> Staff -> Branch để nhóm theo chi nhánh.
             String jpql = "select b.branchCode, b.branchName, count(distinct so.id), coalesce(sum(p.amount), 0) " +
                     "from Payment p " +
                     "join p.saleOrder so " +
@@ -197,7 +231,7 @@ public class StatisticsDaoImpl implements StatisticsDao {
                     "join s.branch b " +
                     "where p.paymentStatus = :status and p.paymentDate >= :from and p.paymentDate < :to " +
                     "group by b.id, b.branchCode, b.branchName " +
-                    "order by coalesce(sum(p.amount), 0) desc";
+                    "order by coalesce(sum(p.amount), 0) desc"; // Sắp xếp theo doanh thu
             return em.createQuery(jpql, Object[].class)
                     .setParameter("status", PaymentStatus.COMPLETED)
                     .setParameter("from", fromInclusive)
@@ -209,4 +243,3 @@ public class StatisticsDaoImpl implements StatisticsDao {
         }
     }
 }
-

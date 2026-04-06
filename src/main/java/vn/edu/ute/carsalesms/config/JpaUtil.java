@@ -5,8 +5,9 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 
 /**
- * Lớp tiện ích dùng để khởi tạo và quản lý EntityManagerFactory.
+ * Lớp tiện ích để khởi tạo và quản lý EntityManagerFactory.
  * Hỗ trợ tạo EntityManager để thao tác với cơ sở dữ liệu thông qua JPA.
+ * Tuân theo mẫu singleton để đảm bảo rằng chỉ có một EntityManagerFactory được tạo cho toàn bộ ứng dụng.
  */
 public class JpaUtil {
 

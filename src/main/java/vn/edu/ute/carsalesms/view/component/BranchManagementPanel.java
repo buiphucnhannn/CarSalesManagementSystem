@@ -46,8 +46,14 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Lớp BranchManagementPanel là giao diện người dùng chính cho việc quản lý chi nhánh.
+ * Nó chứa hai tab chính: một để quản lý thông tin chi nhánh và một để xem báo cáo bán hàng theo chi nhánh.
+ * Lớp này sử dụng BranchManagementController để tương tác với logic nghiệp vụ và xử lý dữ liệu.
+ */
 public class BranchManagementPanel extends JPanel {
 
+    // Định dạng ngày và giờ được sử dụng trong toàn bộ panel.
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -56,18 +62,25 @@ public class BranchManagementPanel extends JPanel {
     private final BranchTabPanel branchTabPanel;
     private final ReportTabPanel reportTabPanel;
 
+    /**
+     * Constructor chính, khởi tạo panel quản lý chi nhánh.
+     * @param controller Controller để xử lý các hoạt động liên quan đến chi nhánh.
+     */
     public BranchManagementPanel(BranchManagementController controller) {
         this.controller = Objects.requireNonNull(controller, "controller is required");
 
         setLayout(new BorderLayout());
         setOpaque(false);
 
+        // Khởi tạo hai tab con
         branchTabPanel = new BranchTabPanel();
         reportTabPanel = new ReportTabPanel();
 
+        // Tạo JTabbedPane để chứa các tab
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Chi nhánh", branchTabPanel);
         tabs.addTab("Báo cáo theo chi nhánh", reportTabPanel);
+        // Thêm listener để làm mới dữ liệu khi chuyển tab
         tabs.addChangeListener(e -> {
             if (tabs.getSelectedIndex() == 0) {
                 branchTabPanel.refreshData();
@@ -79,6 +92,11 @@ public class BranchManagementPanel extends JPanel {
         add(tabs, BorderLayout.CENTER);
     }
 
+    /**
+     * Tạo một JButton với kiểu dáng chung cho các hành động chính.
+     * @param title Tiêu đề của nút.
+     * @return một JButton đã được định kiểu.
+     */
     private JButton createActionButton(String title) {
         JButton btn = new JButton(title);
         btn.setFocusPainted(false);
@@ -91,12 +109,22 @@ public class BranchManagementPanel extends JPanel {
         return btn;
     }
 
+    /**
+     * Tạo một JButton với kiểu dáng cho các hành động nguy hiểm (ví dụ: xóa, ngừng hoạt động).
+     * @param title Tiêu đề của nút.
+     * @return một JButton đã được định kiểu nguy hiểm.
+     */
     private JButton createDangerButton(String title) {
         JButton btn = createActionButton(title);
         btn.setForeground(UiPalette.DANGER);
         return btn;
     }
 
+    /**
+     * Tạo một panel chứa JTable với kiểu dáng chung.
+     * @param table Bảng để đặt bên trong panel.
+     * @return một JPanel chứa bảng.
+     */
     private JPanel createTableCard(JTable table) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(UiPalette.SURFACE_BACKGROUND);
@@ -105,6 +133,7 @@ public class BranchManagementPanel extends JPanel {
                 BorderFactory.createEmptyBorder(8, 8, 8, 8)
         ));
 
+        // Cấu hình giao diện cho bảng
         table.setRowHeight(28);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setGridColor(UiPalette.BORDER_SOFT);
@@ -123,6 +152,7 @@ public class BranchManagementPanel extends JPanel {
         return card;
     }
 
+    // Các phương thức tiện ích để hiển thị hộp thoại
     private void showError(String message) {
         JOptionPane.showMessageDialog(getDialogParent(), message, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
@@ -148,6 +178,9 @@ public class BranchManagementPanel extends JPanel {
         return SwingUtilities.getWindowAncestor(owner);
     }
 
+    /**
+     * Lớp nội cho tab quản lý danh sách chi nhánh.
+     */
     private final class BranchTabPanel extends JPanel {
 
         private static final String[] COLUMNS = {
@@ -167,10 +200,11 @@ public class BranchManagementPanel extends JPanel {
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
 
+            // Khởi tạo bảng và model
             tableModel = new DefaultTableModel(COLUMNS, 0) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
-                    return false;
+                    return false; // Không cho phép sửa trực tiếp trên bảng
                 }
             };
             table = new JTable(tableModel);
@@ -181,13 +215,17 @@ public class BranchManagementPanel extends JPanel {
             add(buildToolbar(), BorderLayout.NORTH);
             add(createTableCard(table), BorderLayout.CENTER);
 
-            refreshData();
+            refreshData(); // Tải dữ liệu lần đầu
         }
 
+        /**
+         * Xây dựng thanh công cụ chứa các bộ lọc và nút hành động.
+         */
         private JPanel buildToolbar() {
             JPanel panel = new JPanel(new BorderLayout(8, 0));
             panel.setOpaque(false);
 
+            // Phần bên trái: tìm kiếm và lọc
             JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
             left.setOpaque(false);
             searchField.setPreferredSize(new Dimension(230, 30));
@@ -204,6 +242,7 @@ public class BranchManagementPanel extends JPanel {
             left.add(new JLabel("Trạng thái:"));
             left.add(statusFilter);
 
+            // Phần bên phải: các nút hành động
             JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
             right.setOpaque(false);
 
@@ -213,7 +252,7 @@ public class BranchManagementPanel extends JPanel {
             JButton deactivateBtn = createDangerButton("Ngừng HĐ");
 
             refreshBtn.addActionListener(e -> refreshData());
-            addBtn.addActionListener(e -> showEditor(null));
+            addBtn.addActionListener(e -> showEditor(null)); // Mở dialog thêm mới
             editBtn.addActionListener(e -> selected()
                     .ifPresentOrElse(this::showEditor, () -> showInfo("Vui lòng chọn chi nhánh cần sửa.")));
             deactivateBtn.addActionListener(e -> selected()
@@ -229,10 +268,14 @@ public class BranchManagementPanel extends JPanel {
             return panel;
         }
 
+        /**
+         * Tải lại dữ liệu từ controller và cập nhật bảng.
+         */
         private void refreshData() {
             try {
                 rows = controller.loadBranches(searchField.getText(), parseStatusFilter());
-                tableModel.setRowCount(0);
+                tableModel.setRowCount(0); // Xóa dữ liệu cũ
+                // Thêm dữ liệu mới vào bảng
                 rows.stream()
                         .map(item -> new Object[]{
                                 item.branchCode(),
@@ -249,6 +292,9 @@ public class BranchManagementPanel extends JPanel {
             }
         }
 
+        /**
+         * Chuyển đổi giá trị được chọn trong combobox trạng thái thành enum Status.
+         */
         private Status parseStatusFilter() {
             String raw = (String) statusFilter.getSelectedItem();
             if (raw == null || raw.equalsIgnoreCase("Tất cả")) {
@@ -257,6 +303,9 @@ public class BranchManagementPanel extends JPanel {
             return Status.valueOf(raw);
         }
 
+        /**
+         * Lấy đối tượng BranchItem tương ứng với hàng đang được chọn trong bảng.
+         */
         private Optional<BranchItem> selected() {
             int view = table.getSelectedRow();
             if (view < 0) {
@@ -269,21 +318,30 @@ public class BranchManagementPanel extends JPanel {
             return Optional.of(rows.get(model));
         }
 
+        /**
+         * Áp dụng bộ lọc nhanh trên dữ liệu đã tải mà không cần gọi lại controller.
+         */
         private void applyQuickFilter() {
             String kw = searchField.getText();
             if (kw == null || kw.isBlank()) {
                 sorter.setRowFilter(null);
                 return;
             }
+            // Lọc không phân biệt chữ hoa chữ thường trên nhiều cột
             sorter.setRowFilter(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(kw.trim()), 0, 1, 2, 3, 4));
         }
 
+        /**
+         * Hiển thị dialog để thêm hoặc sửa thông tin chi nhánh.
+         * @param existing Chi nhánh hiện tại để sửa, hoặc null để thêm mới.
+         */
         private void showEditor(BranchItem existing) {
             BranchEditorDialog dialog = new BranchEditorDialog(
                     getDialogWindow(),
                     existing);
             dialog.setVisible(true);
 
+            // Xử lý kết quả sau khi dialog đóng
             dialog.getResult().ifPresent(request -> {
                 try {
                     if (existing == null) {
@@ -293,13 +351,17 @@ public class BranchManagementPanel extends JPanel {
                         controller.updateBranch(request);
                         showInfo("Cập nhật chi nhánh thành công.");
                     }
-                    refreshData();
+                    refreshData(); // Tải lại dữ liệu để hiển thị thay đổi
                 } catch (Exception ex) {
                     showError(ex.getMessage());
                 }
             });
         }
 
+        /**
+         * Xử lý logic ngừng hoạt động một chi nhánh.
+         * @param branch Chi nhánh cần ngừng hoạt động.
+         */
         private void deactivateBranch(BranchItem branch) {
             int confirm = showConfirm(
                     "Xác nhận ngừng hoạt động chi nhánh: " + branch.branchCode() + " - " + branch.branchName() + "?",
@@ -318,6 +380,9 @@ public class BranchManagementPanel extends JPanel {
             }
         }
 
+        /**
+         * Cấu hình độ rộng và renderer cho các cột trong bảng.
+         */
         private void configureColumns() {
             table.getColumnModel().getColumn(0).setPreferredWidth(90);
             table.getColumnModel().getColumn(1).setPreferredWidth(180);
@@ -327,6 +392,7 @@ public class BranchManagementPanel extends JPanel {
             table.getColumnModel().getColumn(5).setPreferredWidth(90);
             table.getColumnModel().getColumn(6).setPreferredWidth(100);
 
+            // Căn giữa cho một số cột
             DefaultTableCellRenderer center = new DefaultTableCellRenderer();
             center.setHorizontalAlignment(SwingConstants.CENTER);
             table.getColumnModel().getColumn(5).setCellRenderer(center);
@@ -334,6 +400,9 @@ public class BranchManagementPanel extends JPanel {
         }
     }
 
+    /**
+     * Lớp nội cho tab báo cáo bán hàng theo chi nhánh.
+     */
     private final class ReportTabPanel extends JPanel {
 
         private static final String[] COLUMNS = {
@@ -355,6 +424,7 @@ public class BranchManagementPanel extends JPanel {
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
 
+            // Khởi tạo bảng và model
             tableModel = new DefaultTableModel(COLUMNS, 0) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
@@ -366,6 +436,7 @@ public class BranchManagementPanel extends JPanel {
             table.setRowSorter(sorter);
             configureColumns();
 
+            // Đặt ngày mặc định là ngày đầu tháng và ngày hiện tại
             LocalDate today = LocalDate.now();
             fromDateField.setText(today.withDayOfMonth(1).format(DATE_FMT));
             toDateField.setText(today.format(DATE_FMT));
@@ -373,9 +444,12 @@ public class BranchManagementPanel extends JPanel {
             add(buildToolbar(), BorderLayout.NORTH);
             add(createTableCard(table), BorderLayout.CENTER);
 
-            refreshData();
+            refreshData(); // Tải dữ liệu lần đầu
         }
 
+        /**
+         * Xây dựng thanh công cụ cho tab báo cáo.
+         */
         private JPanel buildToolbar() {
             JPanel panel = new JPanel(new BorderLayout(0, 6));
             panel.setOpaque(false);
@@ -385,6 +459,7 @@ public class BranchManagementPanel extends JPanel {
             JPanel rowTwo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
             rowTwo.setOpaque(false);
 
+            // Cấu hình kích thước các trường nhập liệu
             fromDateField.setPreferredSize(new Dimension(100, 30));
             toDateField.setPreferredSize(new Dimension(100, 30));
             searchBranchField.setPreferredSize(new Dimension(220, 30));
@@ -396,6 +471,7 @@ public class BranchManagementPanel extends JPanel {
             searchBtn.addActionListener(e -> applyBranchFilter());
             searchBranchField.addActionListener(e -> applyBranchFilter());
 
+            // Hàng đầu tiên của thanh công cụ: bộ lọc ngày, trạng thái
             rowOne.add(new JLabel("Từ ngày (dd/MM/yyyy):"));
             rowOne.add(fromDateField);
             rowOne.add(new JLabel("Đến ngày:"));
@@ -404,6 +480,7 @@ public class BranchManagementPanel extends JPanel {
             rowOne.add(statusFilter);
             rowOne.add(viewBtn);
 
+            // Hàng thứ hai: bộ lọc theo tên/mã chi nhánh
             rowTwo.add(new JLabel("Chi nhánh (Mã/Tên):"));
             rowTwo.add(searchBranchField);
             rowTwo.add(searchBtn);
@@ -414,8 +491,12 @@ public class BranchManagementPanel extends JPanel {
             return panel;
         }
 
+        /**
+         * Tải dữ liệu báo cáo từ controller và cập nhật bảng.
+         */
         private void refreshData() {
             try {
+                // Phân tích và kiểm tra ngày
                 LocalDate fromDate = parseDate(fromDateField.getText(), "Từ ngày");
                 LocalDate toDate = parseDate(toDateField.getText(), "Đến ngày");
                 if (toDate.isBefore(fromDate)) {
@@ -425,10 +506,12 @@ public class BranchManagementPanel extends JPanel {
                 LocalDateTime from = fromDate.atStartOfDay();
                 LocalDateTime toExclusive = toDate.plusDays(1).atStartOfDay();
 
+                // Tải dữ liệu báo cáo
                 rows = controller.loadBranchSalesReports(from, toExclusive, parseStatusFilter());
                 NumberFormat currency = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"));
 
-                tableModel.setRowCount(0);
+                tableModel.setRowCount(0); // Xóa dữ liệu cũ
+                // Thêm dữ liệu mới vào bảng
                 rows.stream()
                         .map(item -> new Object[]{
                                 item.branchCode(),
@@ -443,22 +526,29 @@ public class BranchManagementPanel extends JPanel {
                         })
                         .forEach(tableModel::addRow);
 
-                applyBranchFilter();
+                applyBranchFilter(); // Áp dụng bộ lọc chi nhánh trên dữ liệu mới tải
             } catch (Exception ex) {
                 showError(ex.getMessage());
             }
         }
 
+        /**
+         * Áp dụng bộ lọc theo mã/tên chi nhánh trên dữ liệu đã có trong bảng.
+         */
         private void applyBranchFilter() {
             String keyword = searchBranchField.getText();
             if (keyword == null || keyword.isBlank()) {
                 sorter.setRowFilter(null);
                 return;
             }
+            // Lọc trên cột Mã CN và Chi nhánh
             sorter.setRowFilter(RowFilter.regexFilter(
                     "(?i)" + java.util.regex.Pattern.quote(keyword.trim()), 0, 1));
         }
 
+        /**
+         * Phân tích chuỗi ngày tháng theo định dạng dd/MM/yyyy.
+         */
         private LocalDate parseDate(String raw, String fieldName) {
             if (raw == null || raw.isBlank()) {
                 throw new IllegalArgumentException(fieldName + " không được để trống.");
@@ -470,6 +560,9 @@ public class BranchManagementPanel extends JPanel {
             }
         }
 
+        /**
+         * Chuyển đổi giá trị được chọn trong combobox trạng thái thành enum Status.
+         */
         private Status parseStatusFilter() {
             String raw = (String) statusFilter.getSelectedItem();
             if (raw == null || raw.equalsIgnoreCase("Tất cả")) {
@@ -478,6 +571,9 @@ public class BranchManagementPanel extends JPanel {
             return Status.valueOf(raw);
         }
 
+        /**
+         * Cấu hình độ rộng và renderer cho các cột trong bảng báo cáo.
+         */
         private void configureColumns() {
             table.getColumnModel().getColumn(0).setPreferredWidth(90);
             table.getColumnModel().getColumn(1).setPreferredWidth(180);
@@ -489,18 +585,23 @@ public class BranchManagementPanel extends JPanel {
             table.getColumnModel().getColumn(7).setPreferredWidth(130);
             table.getColumnModel().getColumn(8).setPreferredWidth(135);
 
+            // Căn giữa cho các cột số liệu
             DefaultTableCellRenderer center = new DefaultTableCellRenderer();
             center.setHorizontalAlignment(SwingConstants.CENTER);
             for (int col : new int[]{2, 3, 4, 5, 6}) {
                 table.getColumnModel().getColumn(col).setCellRenderer(center);
             }
 
+            // Căn phải cho cột doanh thu
             DefaultTableCellRenderer right = new DefaultTableCellRenderer();
             right.setHorizontalAlignment(SwingConstants.RIGHT);
             table.getColumnModel().getColumn(7).setCellRenderer(right);
         }
     }
 
+    /**
+     * Lớp nội cho dialog thêm/sửa thông tin chi nhánh.
+     */
     private static final class BranchEditorDialog extends JDialog {
 
         private final JTextField codeField = new JTextField();
@@ -510,8 +611,8 @@ public class BranchManagementPanel extends JPanel {
         private final JTextField emailField = new JTextField();
         private final JComboBox<Status> statusCombo = new JComboBox<>(Status.values());
 
-        private final Long editingId;
-        private BranchCommandRequest result;
+        private final Long editingId; // ID của chi nhánh đang sửa, null nếu là thêm mới
+        private BranchCommandRequest result; // Kết quả trả về sau khi người dùng lưu
 
         private BranchEditorDialog(Window owner, BranchItem existing) {
             super(owner, existing == null ? "Thêm chi nhánh" : "Sửa chi nhánh", ModalityType.APPLICATION_MODAL);
@@ -521,6 +622,7 @@ public class BranchManagementPanel extends JPanel {
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
 
+            // Panel chứa form nhập liệu
             JPanel form = new JPanel(new GridLayout(6, 2, 8, 6));
             form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
 
@@ -537,20 +639,22 @@ public class BranchManagementPanel extends JPanel {
             form.add(new JLabel("Trạng thái"));
             form.add(statusCombo);
 
+            // Nếu là sửa, điền thông tin có sẵn
             if (existing != null) {
                 codeField.setText(existing.branchCode());
-                codeField.setEditable(true);
+                codeField.setEditable(true); // Mã chi nhánh có thể không cho sửa tùy yêu cầu
                 nameField.setText(existing.branchName());
                 addressField.setText(existing.address());
                 phoneField.setText(existing.phone());
                 emailField.setText(existing.email());
                 statusCombo.setSelectedItem(existing.status());
-            } else {
+            } else { // Nếu là thêm mới
                 codeField.setText("");
                 codeField.setEditable(true);
                 statusCombo.setSelectedItem(Status.ACTIVE);
             }
 
+            // Panel chứa các nút hành động
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
             JButton cancelBtn = new JButton("Hủy");
             JButton saveBtn = new JButton("Lưu");
@@ -573,7 +677,11 @@ public class BranchManagementPanel extends JPanel {
             setLocationRelativeTo(owner);
         }
 
+        /**
+         * Xử lý khi người dùng nhấn nút "Lưu".
+         */
         private void onSave() {
+            // Kiểm tra các trường bắt buộc
             if (codeField.getText().isBlank()) {
                 JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng nhập mã chi nhánh.",
@@ -587,6 +695,7 @@ public class BranchManagementPanel extends JPanel {
                 return;
             }
 
+            // Tạo đối tượng request để trả về
             result = new BranchCommandRequest(
                     editingId,
                     codeField.getText().trim().toUpperCase(),
@@ -596,12 +705,15 @@ public class BranchManagementPanel extends JPanel {
                     emailField.getText().trim().isEmpty() ? null : emailField.getText().trim(),
                     (Status) statusCombo.getSelectedItem()
             );
-            dispose();
+            dispose(); // Đóng dialog
         }
 
+        /**
+         * Lấy kết quả sau khi dialog đóng.
+         * @return Optional chứa BranchCommandRequest nếu người dùng đã lưu.
+         */
         private Optional<BranchCommandRequest> getResult() {
             return Optional.ofNullable(result);
         }
     }
 }
-

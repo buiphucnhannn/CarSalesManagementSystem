@@ -6,63 +6,88 @@ import vn.edu.ute.carsalesms.model.enums.TestDriveStatus;
 import java.time.LocalDateTime;
 
 /**
- * Entity đại diện cho bảng test_drives.
- * Lưu thông tin lịch hẹn lái thử giữa khách hàng và showroom.
+ * Lớp Entity, đại diện cho bảng `test_drives` trong cơ sở dữ liệu.
+ * Lưu trữ thông tin về một lịch hẹn lái thử xe giữa khách hàng và showroom.
  */
 @Entity
 @Table(name = "test_drives")
 public class TestDrive {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã lịch hẹn lái thử, là một định danh duy nhất, không được null.
+     */
     @Column(name = "test_drive_code", nullable = false, unique = true, length = 50)
     private String testDriveCode;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều lịch lái thử có thể thuộc cùng một khách hàng.
+     * Mối quan hệ Nhiều-Một với thực thể Customer.
+     * Nhiều lịch hẹn có thể được đăng ký bởi cùng một khách hàng.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều lịch lái thử có thể tham chiếu cùng một xe.
+     * Mối quan hệ Nhiều-Một với thực thể Car.
+     * Nhiều lịch hẹn có thể đăng ký lái thử cùng một mẫu xe.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_id", nullable = false)
     private Car car;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều lịch lái thử có thể do cùng một nhân viên phụ trách.
+     * Mối quan hệ Nhiều-Một với thực thể Staff.
+     * Nhiều lịch hẹn có thể được phụ trách bởi cùng một nhân viên.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staff_id", nullable = false)
     private Staff staff;
 
+    /**
+     * Thời gian dự kiến diễn ra buổi lái thử.
+     */
     @Column(name = "scheduled_time", nullable = false)
     private LocalDateTime scheduledTime;
 
+    /**
+     * Kết quả hoặc phản hồi của khách hàng sau buổi lái thử.
+     */
     @Column(length = 255)
     private String result;
 
+    /**
+     * Trạng thái của lịch hẹn (ví dụ: SCHEDULED - đã lên lịch, COMPLETED - đã hoàn thành, CANCELLED - đã hủy).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private TestDriveStatus status = TestDriveStatus.SCHEDULED;
 
+    /**
+     * Ghi chú cho lịch hẹn.
+     */
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
+    // Constructors, Getters, and Setters...
     public TestDrive() {
     }
 

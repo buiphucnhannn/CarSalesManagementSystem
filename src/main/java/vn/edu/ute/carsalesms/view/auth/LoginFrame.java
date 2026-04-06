@@ -14,7 +14,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * Màn hình đăng nhập hiện đại, split-panel: branding bên trái + form bên phải.
+ * Cửa sổ đăng nhập Swing.
+ * Sử dụng AuthController để xác thực người dùng và gọi lại onLoginSuccess khi đăng nhập thành công.
  */
 public class LoginFrame extends JFrame {
 
@@ -38,6 +39,11 @@ public class LoginFrame extends JFrame {
     private static final Color BUTTON_GRADIENT_R    = UiPalette.SECONDARY;             // #607DF3
     private static final Color PLACEHOLDER_COLOR    = UiPalette.TEXT_MUTED;            // #94A3B8
 
+    /**
+     * Xây dựng một LoginFrame mới.
+     * @param authController bộ điều khiển sẽ được sử dụng để xác thực người dùng.
+     * @param onLoginSuccess lệnh gọi lại sẽ được gọi khi đăng nhập thành công.
+     */
     public LoginFrame(AuthController authController, Consumer<AuthenticatedUser> onLoginSuccess) {
         this.authController = Objects.requireNonNull(authController, "authController is required");
         this.onLoginSuccess = Objects.requireNonNull(onLoginSuccess, "onLoginSuccess is required");

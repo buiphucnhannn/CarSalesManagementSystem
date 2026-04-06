@@ -7,19 +7,19 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Record hiển thị thông tin một lần thanh toán trong bảng.
- * Chỉ đọc – dùng để render bảng PaymentPanel.
+ * DTO (Data Transfer Object) dạng record, được sử dụng để hiển thị thông tin của một lần thanh toán trong danh sách hoặc bảng.
+ * Đây là đối tượng chỉ đọc, dùng để truyền dữ liệu đã được xử lý và định dạng sẵn cho tầng giao diện (ví dụ: PaymentPanel).
  *
- * @param id                   khoá chính
- * @param paymentCode          mã thanh toán
- * @param orderId              id đơn bán liên kết
- * @param orderCode            mã đơn bán liên kết
- * @param paymentDate          ngày giờ thanh toán
- * @param amount               số tiền thanh toán lần này
- * @param paymentMethod        phương thức thanh toán của lần này
- * @param paymentStatus        trạng thái: PENDING / COMPLETED / FAILED
- * @param transactionReference mã giao dịch ngân hàng (tùy chọn)
- * @param note                 ghi chú
+ * @param id                   Khóa chính của bản ghi thanh toán.
+ * @param paymentCode          Mã định danh duy nhất của lần thanh toán.
+ * @param orderId              ID của đơn hàng mà lần thanh toán này thuộc về.
+ * @param orderCode            Mã của đơn hàng liên quan.
+ * @param paymentDate          Ngày và giờ thực hiện thanh toán.
+ * @param amount               Số tiền được thanh toán trong lần này.
+ * @param paymentMethod        Phương thức được sử dụng cho lần thanh toán này (ví dụ: tiền mặt, chuyển khoản).
+ * @param paymentStatus        Trạng thái của lần thanh toán (ví dụ: PENDING - đang chờ, COMPLETED - thành công, FAILED - thất bại).
+ * @param transactionReference Mã tham chiếu giao dịch (ví dụ: mã từ ngân hàng), nếu có.
+ * @param note                 Ghi chú cho lần thanh toán.
  */
 public record PaymentItem(
         Long id,

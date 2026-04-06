@@ -7,8 +7,17 @@ import vn.edu.ute.carsalesms.model.entity.Account;
 
 import java.util.Optional;
 
+/**
+ * Triển khai của AccountDao.
+ * Cung cấp việc triển khai cho AccountDao sử dụng JPA để tương tác với cơ sở dữ liệu.
+ */
 public class AccountDaoImpl implements AccountDao {
 
+    /**
+     * Tìm một tài khoản theo tên người dùng.
+     * @param username tên người dùng để tìm kiếm.
+     * @return một Optional chứa tài khoản nếu tìm thấy, nếu không trả về một Optional trống.
+     */
     @Override
     public Optional<Account> findByUsername(String username) {
         EntityManager entityManager = JpaUtil.getEntityManager();
@@ -28,6 +37,11 @@ public class AccountDaoImpl implements AccountDao {
         }
     }
 
+    /**
+     * Lưu một tài khoản.
+     * @param account tài khoản cần lưu.
+     * @return tài khoản đã lưu.
+     */
     @Override
     public Account save(Account account) {
         EntityManager entityManager = JpaUtil.getEntityManager();
@@ -54,4 +68,3 @@ public class AccountDaoImpl implements AccountDao {
         }
     }
 }
-

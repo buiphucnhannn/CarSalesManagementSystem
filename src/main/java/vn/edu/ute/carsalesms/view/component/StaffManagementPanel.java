@@ -28,37 +28,37 @@ import java.util.concurrent.ThreadLocalRandom;
  * Panel quản lý nhân viên và tài khoản đăng nhập – Module F05.
  *
  * Cấu trúc:
- *  - Hai tab: "Nhân viên" và "Tài khoản"
- *  - Tab Nhân viên  : CRUD nhân viên (Thêm / Sửa / Ngừng hoạt động)
- *  - Tab Tài khoản  : Tạo / Sửa / Khóa / Xóa tài khoản đăng nhập
+ *  - Hai tab: "Nhân viên" và "Tài khoản".
+ *  - Tab Nhân viên: Cung cấp các chức năng CRUD (Thêm, Sửa, Ngừng hoạt động) cho nhân viên.
+ *  - Tab Tài khoản: Quản lý tài khoản đăng nhập của nhân viên (Tạo, Sửa, Khóa, Xóa).
  *
- * Inner classes:
- *  - StaffTabPanel    – nội dung tab Nhân viên (private final)
- *  - AccountTabPanel  – nội dung tab Tài khoản (private final)
- *  - StaffEditorDialog   – dialog thêm/sửa nhân viên (static final)
- *  - AccountEditorDialog – dialog thêm/sửa tài khoản (static final)
+ * Inner classes (Lớp nội):
+ *  - StaffTabPanel: Lớp nội private final, quản lý giao diện và logic cho tab "Nhân viên".
+ *  - AccountTabPanel: Lớp nội private final, quản lý giao diện và logic cho tab "Tài khoản".
+ *  - StaffEditorDialog: Lớp nội static final, là dialog để thêm hoặc sửa thông tin nhân viên.
+ *  - AccountEditorDialog: Lớp nội static final, là dialog để thêm hoặc sửa tài khoản đăng nhập.
  *
- * Thiết kế tuân thủ SOLID:
- *  - SRP : mỗi inner class chịu trách nhiệm một tab duy nhất
- *  - OCP : mở rộng bằng subclass, không sửa code panel gốc
- *  - DIP : controller inject qua constructor
+ * Thiết kế tuân thủ các nguyên tắc SOLID:
+ *  - SRP (Single Responsibility Principle): Mỗi lớp nội chỉ chịu trách nhiệm cho một chức năng duy nhất (một tab hoặc một dialog).
+ *  - OCP (Open/Closed Principle): Có thể mở rộng chức năng bằng cách thêm các lớp con mới mà không cần sửa đổi mã nguồn của panel gốc.
+ *  - DIP (Dependency Inversion Principle): Controller được inject thông qua constructor, giúp giảm sự phụ thuộc cứng.
  */
 public class StaffManagementPanel extends JPanel {
 
-    /** Định dạng ngày hiển thị. */
+    /** Định dạng ngày tháng để hiển thị trong giao diện. */
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    /** Controller nhận lệnh từ View. */
+    /** Controller xử lý các yêu cầu nghiệp vụ từ view. */
     private final StaffManagementController controller;
 
-    /** Hai tab panel nội dung. */
+    /** Hai panel con tương ứng với hai tab. */
     private final StaffTabPanel staffTabPanel;
     private final AccountTabPanel accountTabPanel;
 
     /**
-     * Khởi tạo panel với hai tab.
+     * Khởi tạo panel quản lý nhân viên với hai tab.
      *
-     * @param controller controller quản lý nhân viên/tài khoản (không null)
+     * @param controller Controller quản lý nhân viên và tài khoản (không được null).
      */
     public StaffManagementPanel(StaffManagementController controller) {
         this.controller = Objects.requireNonNull(controller, "controller is required");
@@ -73,7 +73,7 @@ public class StaffManagementPanel extends JPanel {
         tabs.addTab("Nhân viên",   staffTabPanel);
         tabs.addTab("Tài khoản",   accountTabPanel);
 
-        // Khi chuyển tab thì reload dữ liệu tab đó
+        // Khi người dùng chuyển tab, tải lại dữ liệu cho tab được chọn.
         tabs.addChangeListener(e -> {
             if (tabs.getSelectedIndex() == 0) staffTabPanel.refreshData();
             else accountTabPanel.refreshData();
@@ -82,10 +82,10 @@ public class StaffManagementPanel extends JPanel {
         add(tabs, BorderLayout.CENTER);
     }
 
-    // ─── Shared UI factory helpers (dùng chung cho cả hai tab) ──────────
+    // ─── Các phương thức trợ giúp tạo UI (dùng chung cho cả hai tab) ──────────
 
     /**
-     * Tạo nút hành động màu xanh, style nhất quán.
+     * Tạo một nút hành động với màu xanh và phong cách nhất quán.
      */
     private JButton createActionButton(String title) {
         JButton btn = new JButton(title);
@@ -99,14 +99,14 @@ public class StaffManagementPanel extends JPanel {
         return btn;
     }
 
-    /** Tạo nút nguy hiểm (đỏ) cho các thao tác xóa / khóa. */
+    /** Tạo một nút hành động nguy hiểm (màu đỏ) cho các thao tác xóa hoặc khóa. */
     private JButton createDangerButton(String title) {
         JButton btn = createActionButton(title);
         btn.setForeground(UiPalette.DANGER);
         return btn;
     }
 
-    /** Bọc JTable trong card có border nhất quán với toàn ứng dụng. */
+    /** Bọc một JTable trong một card có đường viền nhất quán với toàn bộ ứng dụng. */
     private JPanel createTableCard(JTable tbl) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(UiPalette.SURFACE_BACKGROUND);
@@ -133,6 +133,7 @@ public class StaffManagementPanel extends JPanel {
         return card;
     }
 
+    // Các phương thức hiển thị hộp thoại thông báo
     private void showError(String msg) {
         JOptionPane.showMessageDialog(getAppDialogParent(), msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
@@ -167,8 +168,8 @@ public class StaffManagementPanel extends JPanel {
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Panel nội dung của tab "Nhân viên".
-     * Chịu trách nhiệm duy nhất cho việc hiển thị và CRUD nhân viên.
+     * Panel nội dung cho tab "Nhân viên".
+     * Chịu trách nhiệm duy nhất cho việc hiển thị và thực hiện các thao tác CRUD đối với nhân viên.
      */
     private final class StaffTabPanel extends JPanel {
 
@@ -186,7 +187,7 @@ public class StaffManagementPanel extends JPanel {
         private final TableRowSorter<DefaultTableModel> sorter;
         private List<StaffItem> rows = new ArrayList<>();
 
-        /** Metadata (danh sách chi nhánh) để dùng trong dialog. */
+        /** Dữ liệu metadata (ví dụ: danh sách chi nhánh) để sử dụng trong dialog. */
         private StaffManagementMetadata metadata = StaffManagementMetadata.empty();
 
         private StaffTabPanel() {
@@ -209,12 +210,12 @@ public class StaffManagementPanel extends JPanel {
             refreshData();
         }
 
-        /** Xây toolbar: tìm kiếm bên trái, CRUD bên phải. */
+        /** Xây dựng thanh công cụ: tìm kiếm bên trái, các nút CRUD bên phải. */
         private JPanel buildToolbar() {
             JPanel panel = new JPanel(new BorderLayout(8, 0));
             panel.setOpaque(false);
 
-            // Trái
+            // Phần bên trái
             JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
             left.setOpaque(false);
             searchField.setPreferredSize(new Dimension(220, 30));
@@ -222,7 +223,7 @@ public class StaffManagementPanel extends JPanel {
 
             JButton searchBtn = createActionButton("Tìm");
             searchBtn.addActionListener(e -> refreshData());
-            // Lọc theo status filter tự động không cần nhấn Tìm
+            // Lọc theo bộ lọc trạng thái tự động mà không cần nhấn nút "Tìm".
             statusFilter.addActionListener(e -> refreshData());
 
             left.add(new JLabel("Tìm kiếm:"));
@@ -231,7 +232,7 @@ public class StaffManagementPanel extends JPanel {
             left.add(new JLabel("Trạng thái:"));
             left.add(statusFilter);
 
-            // Phải
+            // Phần bên phải
             JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
             right.setOpaque(false);
 
@@ -258,7 +259,7 @@ public class StaffManagementPanel extends JPanel {
         }
 
         /**
-         * Tải lại danh sách nhân viên, dùng Stream API map entity→bảng.
+         * Tải lại danh sách nhân viên, sử dụng Stream API để map từ entity sang dữ liệu cho bảng.
          */
         private void refreshData() {
             try {
@@ -283,7 +284,7 @@ public class StaffManagementPanel extends JPanel {
             }
         }
 
-        /** Reload meta khi mở dialog (cần danh sách branch mới nhất). */
+        /** Tải lại metadata khi mở dialog (cần danh sách chi nhánh mới nhất). */
         private void reloadMetadata() {
             try {
                 metadata = controller.loadMetadata();
@@ -293,14 +294,14 @@ public class StaffManagementPanel extends JPanel {
             }
         }
 
-        /** Đọc enum Status từ combobox filter. Null = tất cả. */
+        /** Chuyển đổi giá trị từ combobox filter sang enum Status. Null có nghĩa là "tất cả". */
         private Status parseStatusFilter() {
             String raw = (String) statusFilter.getSelectedItem();
             if (raw == null || raw.equalsIgnoreCase("Tất cả")) return null;
             return Status.valueOf(raw);
         }
 
-        /** Lấy nhân viên đang chọn trong bảng. */
+        /** Lấy nhân viên đang được chọn trong bảng. */
         private Optional<StaffItem> selectedStaff() {
             int view = table.getSelectedRow();
             if (view < 0) return Optional.empty();
@@ -309,7 +310,7 @@ public class StaffManagementPanel extends JPanel {
             return Optional.of(rows.get(model));
         }
 
-        /** Mở dialog thêm/sửa nhân viên. */
+        /** Mở dialog để thêm hoặc sửa nhân viên. */
         private void showEditor(StaffItem existing) {
             reloadMetadata();
             StaffEditorDialog dialog = new StaffEditorDialog(
@@ -332,7 +333,7 @@ public class StaffManagementPanel extends JPanel {
             });
         }
 
-        /** Đặt trạng thái nhân viên thành INACTIVE (ngừng hoạt động). */
+        /** Đặt trạng thái của nhân viên thành INACTIVE (ngừng hoạt động). */
         private void deactivateStaff(StaffItem item) {
             int confirm = showConfirm(
                     "Xác nhận ngừng hoạt động nhân viên: " + item.fullName() + " (" + item.staffCode() + ")?",
@@ -342,7 +343,7 @@ public class StaffManagementPanel extends JPanel {
             if (confirm != JOptionPane.YES_OPTION) return;
 
             try {
-                // Tạo request update chỉ thay đổi status
+                // Tạo một request cập nhật chỉ để thay đổi trạng thái.
                 StaffCommandRequest request = new StaffCommandRequest(
                         item.id(),
                         item.staffCode(),
@@ -361,7 +362,7 @@ public class StaffManagementPanel extends JPanel {
             }
         }
 
-        /** Cấu hình chiều rộng cột và căn chữ. */
+        /** Cấu hình chiều rộng cột và căn chỉnh văn bản. */
         private void configureColumns() {
             table.getColumnModel().getColumn(0).setPreferredWidth(80);
             table.getColumnModel().getColumn(1).setPreferredWidth(160);
@@ -386,9 +387,9 @@ public class StaffManagementPanel extends JPanel {
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Panel nội dung của tab "Tài khoản".
-     * Hiển thị và quản lý tài khoản đăng nhập (1-1 với Staff).
-     * Hỗ trợ: Tạo / Sửa / Khóa / Xóa tài khoản.
+     * Panel nội dung cho tab "Tài khoản".
+     * Hiển thị và quản lý các tài khoản đăng nhập (quan hệ 1-1 với Nhân viên).
+     * Hỗ trợ các chức năng: Tạo, Sửa, Khóa, Xóa tài khoản.
      */
     private final class AccountTabPanel extends JPanel {
 
@@ -425,7 +426,7 @@ public class StaffManagementPanel extends JPanel {
             JPanel panel = new JPanel(new BorderLayout(8, 0));
             panel.setOpaque(false);
 
-            // Trái: tìm kiếm
+            // Phần bên trái: tìm kiếm
             JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
             left.setOpaque(false);
             searchField.setPreferredSize(new Dimension(240, 30));
@@ -437,7 +438,7 @@ public class StaffManagementPanel extends JPanel {
             left.add(searchField);
             left.add(searchBtn);
 
-            // Phải: CRUD + Khóa
+            // Phần bên phải: các nút CRUD và Khóa
             JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
             right.setOpaque(false);
 
@@ -456,7 +457,7 @@ public class StaffManagementPanel extends JPanel {
             resetPwdBtn.addActionListener(e -> selectedAccount()
                     .ifPresentOrElse(this::showResetPasswordDialog,
                             () -> showInfo("Vui lòng chọn tài khoản cần đặt lại mật khẩu.")));
-            // Nút Khóa/Mở: toggle trạng thái khóa tài khoản
+            // Nút Khóa/Mở: chuyển đổi trạng thái khóa của tài khoản.
             lockBtn.addActionListener(e -> selectedAccount()
                     .ifPresentOrElse(this::toggleLock,
                             () -> showInfo("Vui lòng chọn tài khoản cần khóa/mở.")));
@@ -477,7 +478,7 @@ public class StaffManagementPanel extends JPanel {
         }
 
         /**
-         * Load danh sách tài khoản từ service, dùng Stream map → bảng.
+         * Tải danh sách tài khoản từ service, sử dụng Stream để map sang dữ liệu cho bảng.
          */
         private void refreshData() {
             try {
@@ -510,9 +511,9 @@ public class StaffManagementPanel extends JPanel {
             return Optional.of(rows.get(model));
         }
 
-        /** Mở dialog tạo/sửa tài khoản. */
+        /** Mở dialog để tạo hoặc sửa tài khoản. */
         private void showAccountEditor(AccountItem existing) {
-            // Lấy danh sách nhân viên chưa có tài khoản để điền combo khi tạo mới
+            // Lấy danh sách nhân viên chưa có tài khoản để điền vào combobox khi tạo mới.
             AccountEditorDialog dialog = new AccountEditorDialog(
                     getAppDialogWindow(), existing,
                     controller.loadStaffsPendingAccount());
@@ -541,7 +542,7 @@ public class StaffManagementPanel extends JPanel {
             });
         }
 
-        /** Mở dialog đặt lại mật khẩu cho tài khoản đã chọn. */
+        /** Mở dialog để đặt lại mật khẩu cho tài khoản đã được chọn. */
         private void showResetPasswordDialog(AccountItem item) {
             ResetPasswordDialog dialog = new ResetPasswordDialog(
                     getAppDialogWindow(),
@@ -581,7 +582,7 @@ public class StaffManagementPanel extends JPanel {
             });
         }
 
-        /** Hiển thị thông báo ở chính giữa cửa sổ app. */
+        /** Hiển thị một thông báo ở chính giữa cửa sổ ứng dụng. */
         private void showCenteredInfoDialog(String message) {
             JOptionPane optionPane = new JOptionPane(message, JOptionPane.INFORMATION_MESSAGE);
             Window owner = getAppDialogWindow();
@@ -591,9 +592,9 @@ public class StaffManagementPanel extends JPanel {
         }
 
         /**
-         * Toggle khóa/mở tài khoản với xác nhận.
+         * Chuyển đổi trạng thái khóa/mở của tài khoản với hộp thoại xác nhận.
          *
-         * @param item tài khoản cần thao tác
+         * @param item Tài khoản cần thực hiện thao tác.
          */
         private void toggleLock(AccountItem item) {
             boolean willLock = !item.locked();
@@ -615,7 +616,7 @@ public class StaffManagementPanel extends JPanel {
             }
         }
 
-        /** Xóa tài khoản với xác nhận. */
+        /** Xóa tài khoản với hộp thoại xác nhận. */
         private void deleteAccount(AccountItem item) {
             int confirm = showConfirm(
                     "Xác nhận xóa tài khoản: " + item.username() + " (NV: " + item.staffFullName() + ")?",
@@ -635,7 +636,7 @@ public class StaffManagementPanel extends JPanel {
         }
 
         private void configureColumns() {
-            // Ẩn cột ID (dùng internal)
+            // Ẩn cột ID (chỉ dùng nội bộ).
             table.getColumnModel().getColumn(0).setMinWidth(0);
             table.getColumnModel().getColumn(0).setMaxWidth(0);
             table.getColumnModel().getColumn(0).setWidth(0);
@@ -651,7 +652,7 @@ public class StaffManagementPanel extends JPanel {
 
             DefaultTableCellRenderer center = new DefaultTableCellRenderer();
             center.setHorizontalAlignment(SwingConstants.CENTER);
-            // Căn giữa: Trạng thái, Khóa, Lỗi đăng nhập
+            // Căn giữa các cột: Trạng thái, Khóa, Lỗi đăng nhập.
             for (int col : new int[]{4, 5, 6}) {
                 table.getColumnModel().getColumn(col).setCellRenderer(center);
             }
@@ -663,8 +664,8 @@ public class StaffManagementPanel extends JPanel {
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Dialog modal nhập thông tin nhân viên.
-     * Static để không giữ tham chiếu về outer panel.
+     * Dialog modal để nhập thông tin nhân viên.
+     * Là lớp static để không giữ tham chiếu đến panel bên ngoài.
      */
     private static final class StaffEditorDialog extends JDialog {
 
@@ -690,7 +691,7 @@ public class StaffManagementPanel extends JPanel {
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
 
-            // Điền danh sách chi nhánh vào combo
+            // Điền danh sách chi nhánh vào combobox.
             metadata.branches().forEach(branchCombo::addItem);
 
             JPanel form = new JPanel(new GridLayout(7, 2, 8, 6));
@@ -704,7 +705,7 @@ public class StaffManagementPanel extends JPanel {
             form.add(new JLabel("Chi nhánh *"));       form.add(branchCombo);
             form.add(new JLabel("Trạng thái"));        form.add(statusCombo);
 
-            // Điền dữ liệu cũ nếu đang sửa
+            // Điền dữ liệu cũ nếu đang ở chế độ sửa.
             if (existing != null) {
                 codeField.setText(existing.staffCode());
                 codeField.setEditable(true);
@@ -713,7 +714,7 @@ public class StaffManagementPanel extends JPanel {
                 phoneField.setText(existing.phone());
                 roleCombo.setSelectedItem(existing.role());
                 statusCombo.setSelectedItem(existing.status());
-                // Chọn chi nhánh khớp branchId
+                // Chọn chi nhánh khớp với branchId.
                 selectBranchById(existing.branchId());
             } else {
                 codeField.setText(metadata.nextStaffCode());
@@ -743,7 +744,7 @@ public class StaffManagementPanel extends JPanel {
             setLocationRelativeTo(owner);
         }
 
-        /** Đọc form và tạo request hoặc hiển thị lỗi validate. */
+        /** Đọc dữ liệu từ form, tạo request hoặc hiển thị lỗi xác thực. */
         private void onSave() {
             if (codeField.getText().isBlank() || fullNameField.getText().isBlank()) {
                 JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
@@ -771,7 +772,7 @@ public class StaffManagementPanel extends JPanel {
             dispose();
         }
 
-        /** Chọn chi nhánh trong combo theo branchId. */
+        /** Chọn một chi nhánh trong combobox dựa trên branchId. */
         private void selectBranchById(Long branchId) {
             for (int i = 0; i < branchCombo.getItemCount(); i++) {
                 if (branchCombo.getItemAt(i).id().equals(branchId)) {
@@ -791,18 +792,18 @@ public class StaffManagementPanel extends JPanel {
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Dialog modal nhập thông tin tài khoản đăng nhập.
-     * Khi tạo mới: cho chọn nhân viên + nhập password.
-     * Khi sửa: chỉ cho đổi username / password (để trống = giữ nguyên) / status.
+     * Dialog modal để nhập thông tin tài khoản đăng nhập.
+     * Khi tạo mới: cho phép chọn nhân viên và nhập mật khẩu.
+     * Khi sửa: chỉ cho phép thay đổi username, mật khẩu (để trống để giữ nguyên), và trạng thái.
      */
     private static final class AccountEditorDialog extends JDialog {
 
         private record CreateAccountSummary(String role, String fullName, String username, String rawPassword) {}
 
-        /** ComboBox chọn nhân viên (chỉ hiển thị khi tạo mới). */
+        /** ComboBox để chọn nhân viên (chỉ hiển thị khi tạo mới). */
         private final JComboBox<StaffItem> staffCombo = new JComboBox<>();
         private final JTextField usernameField = new JTextField();
-        /** Để trống khi sửa = giữ mật khẩu cũ. */
+        /** Để trống khi sửa có nghĩa là giữ nguyên mật khẩu cũ. */
         private final JPasswordField passwordField = new JPasswordField();
         private final JCheckBox showPasswordCheck = new JCheckBox("Hiện");
         private final JComboBox<Status> statusCombo = new JComboBox<>(Status.values());
@@ -825,7 +826,7 @@ public class StaffManagementPanel extends JPanel {
             JPanel form = new JPanel(new GridLayout(4, 2, 8, 6));
             form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
 
-            // Hiển thị label ngắn gọn thay vì StaffItem.toString() dài dòng.
+            // Hiển thị một label ngắn gọn thay vì chuỗi dài từ StaffItem.toString().
             staffCombo.setRenderer(new DefaultListCellRenderer() {
                 @Override
                 public Component getListCellRendererComponent(JList<?> list,
@@ -843,15 +844,15 @@ public class StaffManagementPanel extends JPanel {
             });
 
             if (existing == null) {
-                // Tạo mới: điền combo nhân viên chưa có tài khoản
+                // Tạo mới: điền vào combobox các nhân viên chưa có tài khoản.
                 allStaffs.stream()
-                        .filter(s -> !s.hasAccount()) // Chỉ nhân viên chưa có TK
+                        .filter(s -> !s.hasAccount()) // Chỉ những nhân viên chưa có tài khoản.
                         .forEach(staffCombo::addItem);
                 staffCombo.addActionListener(e -> populateDefaultUsername());
                 form.add(new JLabel("Nhân viên *"));
                 form.add(staffCombo);
             } else {
-                // Sửa: hiển thị thông tin nhân viên (read-only)
+                // Sửa: hiển thị thông tin nhân viên (chỉ đọc).
                 JLabel staffLabel = new JLabel(existing.staffFullName() + " (" + existing.staffCode() + ")");
                 staffLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
                 form.add(new JLabel("Nhân viên"));
@@ -872,7 +873,7 @@ public class StaffManagementPanel extends JPanel {
             form.add(passwordWrapper);
             form.add(new JLabel("Trạng thái"));       form.add(statusCombo);
 
-            // Điền dữ liệu cũ nếu sửa
+            // Điền dữ liệu cũ nếu đang sửa.
             if (existing != null) {
                 usernameField.setText(existing.username());
                 statusCombo.setSelectedItem(existing.status());
@@ -907,7 +908,7 @@ public class StaffManagementPanel extends JPanel {
             setLocationRelativeTo(owner);
         }
 
-        /** Đọc form và tạo AccountCommandRequest. */
+        /** Đọc dữ liệu từ form và tạo một AccountCommandRequest. */
         private void onSave(AccountItem existing) {
             if (usernameField.getText().isBlank()) {
                 JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
@@ -918,7 +919,7 @@ public class StaffManagementPanel extends JPanel {
 
             String rawPassword = new String(passwordField.getPassword()).trim();
 
-            // Khi tạo mới bắt buộc phải có mật khẩu
+            // Khi tạo mới, mật khẩu là bắt buộc.
             if (existing == null && rawPassword.isBlank()) {
                 JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
                         "Vui lòng nhập mật khẩu.",
@@ -928,7 +929,7 @@ public class StaffManagementPanel extends JPanel {
 
             Long staffId;
             if (existing == null) {
-                // Lấy id nhân viên từ combo
+                // Lấy ID nhân viên từ combobox.
                 StaffItem selectedStaff = (StaffItem) staffCombo.getSelectedItem();
                 if (selectedStaff == null) {
                     JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
@@ -995,7 +996,7 @@ public class StaffManagementPanel extends JPanel {
         }
     }
 
-    /** Dialog đặt lại mật khẩu cho tài khoản hiện có. */
+    /** Dialog để đặt lại mật khẩu cho một tài khoản hiện có. */
     private static final class ResetPasswordDialog extends JDialog {
 
         private final JLabel targetLabel = new JLabel();

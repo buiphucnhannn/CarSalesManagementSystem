@@ -10,21 +10,21 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Triển khai CustomerDao dùng JPA/Hibernate.
- * Mỗi phương thức tự quản lý vòng đời EntityManager (open → thao tác → close).
- * Tuân thủ pattern Transaction Script nhất quán với toàn bộ dự án.
+ * Lớp triển khai cho CustomerDao, sử dụng JPA/Hibernate để thao tác với dữ liệu khách hàng.
+ * Mỗi phương thức trong lớp này tự quản lý vòng đời của EntityManager (mở, sử dụng, và đóng),
+ * tuân thủ theo mẫu Transaction Script, phù hợp với kiến trúc chung của dự án.
  */
 public class CustomerDaoImpl implements CustomerDao {
 
     /**
-     * Tìm khách hàng theo từ khóa (mã, tên, số điện thoại, email).
-     * Kết quả sắp xếp theo updated_at DESC.
+     * Tìm kiếm khách hàng dựa trên từ khóa. Từ khóa sẽ được so khớp với mã, tên, số điện thoại, và email.
+     * Kết quả được sắp xếp theo ngày cập nhật gần nhất để đưa những khách hàng mới tương tác lên đầu.
      */
     @Override
     public List<Customer> findCustomers(String keyword) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
-            // Xây JPQL động dựa trên keyword
+            // Xây dựng câu truy vấn JPQL một cách linh hoạt.
             StringBuilder jpql = new StringBuilder(
                     "select c from Customer c where 1=1");
 
@@ -39,7 +39,7 @@ public class CustomerDaoImpl implements CustomerDao {
 
             TypedQuery<Customer> query = em.createQuery(jpql.toString(), Customer.class);
             if (keyword != null && !keyword.isBlank()) {
-                // Tham số LIKE: %keyword%
+                // Gán giá trị cho tham số :kw, sử dụng ký tự đại diện '%' cho truy vấn LIKE.
                 query.setParameter("kw", "%" + keyword.trim().toLowerCase() + "%");
             }
             return query.getResultList();
@@ -48,6 +48,9 @@ public class CustomerDaoImpl implements CustomerDao {
         }
     }
 
+    /**
+     * Tìm khách hàng theo ID.
+     */
     @Override
     public Optional<Customer> findById(Long id) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -58,6 +61,9 @@ public class CustomerDaoImpl implements CustomerDao {
         }
     }
 
+    /**
+     * Tìm khách hàng theo mã khách hàng.
+     */
     @Override
     public Optional<Customer> findByCode(String customerCode) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -76,8 +82,8 @@ public class CustomerDaoImpl implements CustomerDao {
     }
 
     /**
-     * Lưu hoặc cập nhật khách hàng trong một transaction.
-     * Dùng merge() để xử lý cả trường hợp entity detached.
+     * Lưu (thêm mới hoặc cập nhật) một khách hàng. Thao tác được thực hiện trong một transaction.
+     * Sử dụng `merge()` để xử lý cả trường hợp entity đã tồn tại (detached) hoặc chưa.
      */
     @Override
     public Customer save(Customer customer) {
@@ -99,16 +105,18 @@ public class CustomerDaoImpl implements CustomerDao {
     }
 
     /**
-     * Xóa cứng khách hàng.
-     * Nếu khách hàng đang có đơn bán, CSDL sẽ ném ConstraintViolationException.
-     * Service sẽ bắt lỗi này và hiển thị thông báo thân thiện cho người dùng.
+     * Xóa vĩnh viễn một khách hàng khỏi cơ sở dữ liệu.
+     * Lưu ý: Nếu khách hàng này có các ràng buộc khóa ngoại (ví dụ: đã có đơn hàng),
+     * cơ sở dữ liệu sẽ ném ra một ConstraintViolationException.
+     * Lớp Service ở tầng trên có trách nhiệm bắt lỗi này và hiển thị thông báo thân thiện cho người dùng.
      */
     @Override
     public void deleteById(Long id) {
         EntityManager em = JpaUtil.getEntityManager();
         try {
             em.getTransaction().begin();
-            // Dùng getReference để tránh query không cần thiết
+            // Sử dụng getReference() để lấy một tham chiếu đến đối tượng mà không cần tải nó từ DB,
+            // giúp tối ưu hóa hiệu năng cho thao tác xóa.
             Customer ref = em.getReference(Customer.class, id);
             em.remove(ref);
             em.flush();

@@ -14,14 +14,15 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Triển khai SaleOrderDao dùng JPA/Hibernate.
- * Dùng join fetch để tránh LazyInitializationException sau khi EM đóng.
+ * Lớp triển khai cho SaleOrderDao, sử dụng JPA/Hibernate.
+ * Các truy vấn sử dụng "join fetch" để tải trước các thực thể liên quan,
+ * giúp tránh lỗi LazyInitializationException sau khi EntityManager đã đóng.
  */
 public class SaleOrderDaoImpl implements SaleOrderDao {
 
     /**
-     * Tìm danh sách đơn bán với eager-fetch customer, staff, promotion.
-     * Kết quả sắp xếp theo order_date DESC.
+     * Tìm danh sách đơn hàng với các thông tin liên quan được tải sẵn (customer, staff, promotion).
+     * Kết quả được sắp xếp theo ngày đặt hàng gần nhất.
      */
     @Override
     public List<SaleOrder> findOrders(String keyword, OrderStatus statusFilter) {
@@ -32,7 +33,7 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
                     "join fetch o.customer c " +
                     "join fetch o.staff s " +
                     "join fetch s.branch sb " +
-                    "left join fetch o.promotion p " +
+                    "left join fetch o.promotion p " + // Left join vì đơn hàng có thể không có khuyến mãi
                     "where 1=1");
 
             if (keyword != null && !keyword.isBlank()) {
@@ -58,6 +59,9 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
         }
     }
 
+    /**
+     * Tìm một đơn hàng theo ID, tải kèm tất cả các thông tin liên quan cần thiết.
+     */
     @Override
     public Optional<SaleOrder> findById(Long id) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -79,6 +83,9 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
         }
     }
 
+    /**
+     * Kiểm tra sự tồn tại của một đơn hàng thông qua mã đơn hàng.
+     */
     @Override
     public boolean existsByCode(String orderCode) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -95,7 +102,8 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
     }
 
     /**
-     * Lưu đơn bán trong transaction, eager-init proxy trước khi EM đóng.
+     * Lưu một đơn hàng. Thao tác được thực hiện trong transaction.
+     * Chủ động khởi tạo các proxy để tránh lỗi sau khi EntityManager đóng.
      */
     @Override
     public SaleOrder save(SaleOrder order) {
@@ -104,7 +112,7 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
             em.getTransaction().begin();
             SaleOrder merged = em.merge(order);
             em.flush();
-            // Eager-init các lazy proxy
+            // Khởi tạo các lazy proxy
             merged.getCustomer().getFullName();
             merged.getStaff().getFullName();
             em.getTransaction().commit();
@@ -117,6 +125,9 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
         }
     }
 
+    /**
+     * Lấy danh sách chi tiết của một đơn hàng, tải kèm thông tin xe và thương hiệu.
+     */
     @Override
     public List<SaleOrderDetail> findDetailsByOrderId(Long orderId) {
         EntityManager em = JpaUtil.getEntityManager();
@@ -133,6 +144,9 @@ public class SaleOrderDaoImpl implements SaleOrderDao {
         }
     }
 
+    /**
+     * Lưu một chi tiết đơn hàng.
+     */
     @Override
     public SaleOrderDetail saveDetail(SaleOrderDetail detail) {
         EntityManager em = JpaUtil.getEntityManager();

@@ -8,46 +8,73 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity đại diện cho bảng brands.
- * Lưu thông tin thương hiệu xe trong hệ thống.
+ * Lớp Entity, đại diện cho bảng `brands` trong cơ sở dữ liệu.
+ * Mỗi đối tượng của lớp này tương ứng với một dòng trong bảng, lưu trữ thông tin về một thương hiệu xe.
  */
 @Entity
 @Table(name = "brands")
 public class Brand {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã thương hiệu, là một định danh duy nhất, không được null.
+     */
     @Column(name = "brand_code", nullable = false, unique = true, length = 50)
     private String brandCode;
 
+    /**
+     * Tên thương hiệu, cũng là duy nhất và không được null.
+     */
     @Column(name = "brand_name", nullable = false, unique = true, length = 255)
     private String brandName;
 
+    /**
+     * Quốc gia xuất xứ của thương hiệu.
+     */
     @Column(length = 100)
     private String country;
 
+    /**
+     * Mô tả chi tiết về thương hiệu.
+     */
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * Trạng thái của thương hiệu (ví dụ: ACTIVE - đang hợp tác, INACTIVE - đã ngừng).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một thương hiệu có thể có nhiều xe.
+     * Mối quan hệ Một-Nhiều (One-to-Many) với thực thể Car.
+     * Một thương hiệu có thể có nhiều mẫu xe.
+     * `mappedBy = "brand"`: Mối quan hệ này được quản lý bởi thuộc tính `brand` trong lớp `Car`.
+     * `fetch = FetchType.LAZY`: Danh sách các xe sẽ chỉ được tải khi có yêu cầu truy cập đến nó.
      */
     @OneToMany(mappedBy = "brand", fetch = FetchType.LAZY)
     private List<Car> cars = new ArrayList<>();
 
+    // Constructors, Getters, and Setters...
     public Brand() {
     }
 

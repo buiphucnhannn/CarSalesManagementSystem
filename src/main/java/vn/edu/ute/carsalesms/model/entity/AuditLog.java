@@ -6,45 +6,71 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 /**
- * Entity đại diện cho bảng audit_logs.
- * Lưu lịch sử thao tác của nhân viên trên hệ thống.
+ * Lớp Entity, đại diện cho bảng `audit_logs` trong cơ sở dữ liệu.
+ * Bảng này có vai trò như một cuốn nhật ký, ghi lại lịch sử các thao tác quan trọng
+ * của nhân viên trên hệ thống, phục vụ cho việc kiểm tra và giám sát.
  */
 @Entity
 @Table(name = "audit_logs")
 public class AuditLog {
 
+    /**
+     * Múi giờ Việt Nam, dùng để đảm bảo thời gian được ghi lại một cách nhất quán.
+     */
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều bản ghi log có thể do cùng một nhân viên thực hiện.
+     * Mối quan hệ Nhiều-Một với thực thể Staff.
+     * Nhiều bản ghi nhật ký có thể được thực hiện bởi cùng một nhân viên.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staff_id", nullable = false)
     private Staff staff;
 
+    /**
+     * Tên hành động được thực hiện (ví dụ: "CREATE", "UPDATE", "LOGIN_FAILED").
+     */
     @Column(nullable = false, length = 100)
     private String action;
 
+    /**
+     * Tên của thực thể bị tác động (ví dụ: "CAR", "CUSTOMER", "SALE_ORDER").
+     */
     @Column(name = "entity_name", nullable = false, length = 100)
     private String entityName;
 
+    /**
+     * ID của bản ghi cụ thể trong bảng của thực thể bị tác động.
+     */
     @Column(name = "entity_id")
     private Long entityId;
 
+    /**
+     * Giá trị cũ của dữ liệu trước khi thay đổi (thường ở dạng chuỗi JSON hoặc mô tả).
+     */
     @Column(name = "old_value", columnDefinition = "TEXT")
     private String oldValue;
 
+    /**
+     * Giá trị mới của dữ liệu sau khi thay đổi.
+     */
     @Column(name = "new_value", columnDefinition = "TEXT")
     private String newValue;
 
+    /**
+     * Thời điểm hành động được thực hiện.
+     */
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // Constructors, Getters, and Setters...
     public AuditLog() {
     }
 
@@ -118,6 +144,10 @@ public class AuditLog {
         this.createdAt = createdAt;
     }
 
+    /**
+     * Hàm callback của JPA, được gọi tự động trước khi một entity được lưu lần đầu.
+     * Dùng để gán giá trị thời gian hiện tại (theo múi giờ Việt Nam) cho `createdAt`.
+     */
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {

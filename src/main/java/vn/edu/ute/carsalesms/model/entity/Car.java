@@ -9,43 +9,53 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity đại diện cho bảng cars.
- * Lưu thông tin xe đang kinh doanh tại showroom.
- * Hệ thống hiện quản lý theo mô hình sản phẩm/tồn kho.
+ * Lớp Entity, đại diện cho bảng `cars` trong cơ sở dữ liệu.
+ * Mỗi đối tượng của lớp này tương ứng với một dòng trong bảng, lưu trữ thông tin chi tiết về một loại xe đang được kinh doanh tại showroom.
+ * Hệ thống hiện tại quản lý xe theo mô hình sản phẩm (product model), tức là mỗi bản ghi đại diện cho một mẫu xe với số lượng tồn kho, chứ không phải một chiếc xe cụ thể.
  */
 @Entity
 @Table(name = "cars")
 public class Car {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã xe, là một định danh duy nhất, không được null.
+     */
     @Column(name = "car_code", nullable = false, unique = true, length = 50)
     private String carCode;
 
+    /**
+     * Tên đầy đủ của xe.
+     */
     @Column(name = "car_name", nullable = false, length = 255)
     private String carName;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều xe có thể thuộc cùng một thương hiệu.
+     * Mối quan hệ Nhiều-Một (Many-to-One) với thực thể Brand.
+     * Nhiều xe có thể thuộc về cùng một thương hiệu.
+     * `fetch = FetchType.LAZY`: Dữ liệu của Brand sẽ chỉ được tải từ DB khi thực sự cần thiết.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id", nullable = false)
     private Brand brand;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều xe có thể thuộc cùng một danh mục xe.
+     * Mối quan hệ Nhiều-Một với thực thể CarCategory.
+     * Nhiều xe có thể thuộc cùng một danh mục (ví dụ: SUV, Sedan).
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private CarCategory category;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều xe có thể được quản lý tại cùng một chi nhánh.
+     * Mối quan hệ Nhiều-Một với thực thể Branch.
+     * Nhiều xe có thể được quản lý và tồn kho tại cùng một chi nhánh.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id", nullable = false)
@@ -69,45 +79,74 @@ public class Car {
     @Column(name = "manufacture_year")
     private Integer manufactureYear;
 
+    /**
+     * Giá nhập kho của xe.
+     * `precision` và `scale` dùng để định nghĩa độ chính xác cho kiểu dữ liệu số thập phân trong DB.
+     */
     @Column(name = "import_price", nullable = false, precision = 18, scale = 2)
     private BigDecimal importPrice = BigDecimal.ZERO;
 
+    /**
+     * Giá bán niêm yết của xe.
+     */
     @Column(name = "sale_price", nullable = false, precision = 18, scale = 2)
     private BigDecimal salePrice = BigDecimal.ZERO;
 
+    /**
+     * Tổng số lượng xe đã nhập.
+     */
     @Column(nullable = false)
     private Integer quantity = 0;
 
+    /**
+     * Số lượng xe còn lại có sẵn để bán.
+     */
     @Column(name = "available_quantity", nullable = false)
     private Integer availableQuantity = 0;
 
+    /**
+     * Mô tả chi tiết về xe, sử dụng kiểu TEXT trong DB để lưu trữ chuỗi dài.
+     */
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * Trạng thái của xe (ví dụ: ACTIVE - đang kinh doanh, INACTIVE - ngừng kinh doanh).
+     * `EnumType.STRING` lưu tên của enum (ví dụ: "ACTIVE") vào DB thay vì vị trí số (0, 1).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
+    /**
+     * Thời điểm bản ghi được tạo, được quản lý tự động bởi cơ sở dữ liệu.
+     * `insertable = false, updatable = false`: JPA sẽ không chèn hoặc cập nhật giá trị cho cột này.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối, được quản lý tự động bởi cơ sở dữ liệu.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một xe có thể xuất hiện trong nhiều dòng chi tiết đơn hàng.
+     * Mối quan hệ Một-Nhiều (One-to-Many) với SaleOrderDetail.
+     * Một mẫu xe có thể xuất hiện trong nhiều dòng chi tiết của các đơn hàng khác nhau.
+     * `mappedBy = "car"`: Chỉ ra rằng mối quan hệ này được quản lý bởi thuộc tính `car` trong lớp `SaleOrderDetail`.
      */
     @OneToMany(mappedBy = "car", fetch = FetchType.LAZY)
     private List<SaleOrderDetail> saleOrderDetails = new ArrayList<>();
 
     /**
-     * Quan hệ một - nhiều:
-     * Một xe có thể được đặt nhiều lịch lái thử.
+     * Mối quan hệ Một-Nhiều với TestDrive.
+     * Một mẫu xe có thể được đặt cho nhiều lịch lái thử.
      */
     @OneToMany(mappedBy = "car", fetch = FetchType.LAZY)
     private List<TestDrive> testDrives = new ArrayList<>();
 
+    // Constructors, Getters, and Setters...
     public Car() {
     }
 

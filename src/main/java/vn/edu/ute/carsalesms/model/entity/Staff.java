@@ -9,79 +9,108 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity đại diện cho bảng staffs.
- * Lưu thông tin nghiệp vụ của nhân viên.
+ * Lớp Entity, đại diện cho bảng `staffs` trong cơ sở dữ liệu.
+ * Lưu trữ các thông tin nghiệp vụ của một nhân viên, không bao gồm thông tin đăng nhập.
  */
 @Entity
 @Table(name = "staffs")
 public class Staff {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã nhân viên, là một định danh duy nhất, không được null.
+     */
     @Column(name = "staff_code", nullable = false, unique = true, length = 50)
     private String staffCode;
 
+    /**
+     * Tên đầy đủ của nhân viên.
+     */
     @Column(name = "full_name", nullable = false, length = 255)
     private String fullName;
 
+    /**
+     * Email của nhân viên, là duy nhất.
+     */
     @Column(unique = true, length = 100)
     private String email;
 
+    /**
+     * Số điện thoại của nhân viên.
+     */
     @Column(length = 20)
     private String phone;
 
+    /**
+     * Vai trò của nhân viên trong hệ thống (ví dụ: ADMIN, STAFF).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StaffRole role;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều nhân viên có thể thuộc cùng một chi nhánh.
+     * Mối quan hệ Nhiều-Một với thực thể Branch.
+     * Nhiều nhân viên có thể làm việc tại cùng một chi nhánh.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id", nullable = false)
     private Branch branch;
 
+    /**
+     * Trạng thái của nhân viên (ví dụ: ACTIVE - đang làm việc, INACTIVE - đã nghỉ việc).
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * Quan hệ một - một:
-     * Mỗi nhân viên có tối đa một tài khoản đăng nhập.
+     * Mối quan hệ Một-Một (One-to-One) với thực thể Account.
+     * Mỗi nhân viên có thể có một và chỉ một tài khoản đăng nhập.
+     * `mappedBy = "staff"`: Mối quan hệ này được quản lý bởi thuộc tính `staff` trong lớp `Account`.
      */
     @OneToOne(mappedBy = "staff", fetch = FetchType.LAZY)
     private vn.edu.ute.carsalesms.model.entity.Account account;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một nhân viên có thể tạo nhiều đơn bán.
+     * Mối quan hệ Một-Nhiều với thực thể SaleOrder.
+     * Một nhân viên có thể tạo và quản lý nhiều đơn hàng.
      */
     @OneToMany(mappedBy = "staff", fetch = FetchType.LAZY)
     private List<SaleOrder> saleOrders = new ArrayList<>();
 
     /**
-     * Quan hệ một - nhiều:
-     * Một nhân viên có thể phụ trách nhiều lịch lái thử.
+     * Mối quan hệ Một-Nhiều với thực thể TestDrive.
+     * Một nhân viên có thể phụ trách nhiều lịch hẹn lái thử.
      */
     @OneToMany(mappedBy = "staff", fetch = FetchType.LAZY)
     private List<TestDrive> testDrives = new ArrayList<>();
 
     /**
-     * Quan hệ một - nhiều:
-     * Một nhân viên có thể phát sinh nhiều log thao tác.
+     * Mối quan hệ Một-Nhiều với thực thể AuditLog.
+     * Một nhân viên có thể thực hiện nhiều hành động được ghi lại trong nhật ký hệ thống.
      */
     @OneToMany(mappedBy = "staff", fetch = FetchType.LAZY)
     private List<AuditLog> auditLogs = new ArrayList<>();
 
+    // Constructors, Getters, and Setters...
     public Staff() {
     }
 

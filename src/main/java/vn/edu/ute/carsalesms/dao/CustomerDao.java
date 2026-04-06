@@ -6,43 +6,53 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Interface DAO cho thực thể Customer.
- * Định nghĩa các thao tác CRUD cơ bản và tìm kiếm theo từ khóa.
- * Tách biệt giao diện khỏi triển khai (Interface Segregation, Dependency Inversion).
+ * Giao diện DAO (Data Access Object) cho thực thể Khách hàng (Customer).
+ * Định nghĩa các phương thức trừu tượng cho các thao tác CRUD (Tạo, Đọc, Cập nhật, Xóa) cơ bản
+ * và các phương thức tìm kiếm.
+ * Việc sử dụng interface giúp tuân thủ các nguyên tắc SOLID như Tách biệt Giao diện (Interface Segregation)
+ * và Đảo ngược Phụ thuộc (Dependency Inversion), làm cho code linh hoạt và dễ bảo trì hơn.
  */
 public interface CustomerDao {
 
     /**
-     * Tìm kiếm danh sách khách hàng theo từ khóa (mã, tên, số điện thoại, email).
+     * Tìm kiếm và trả về danh sách khách hàng dựa trên một từ khóa.
+     * Từ khóa có thể được dùng để tìm kiếm trên nhiều trường như mã khách hàng, tên, số điện thoại, hoặc email.
      *
-     * @param keyword từ khóa, null hoặc rỗng = lấy tất cả
-     * @return danh sách Customer khớp điều kiện
+     * @param keyword Từ khóa tìm kiếm. Nếu là null hoặc chuỗi rỗng, phương thức sẽ trả về tất cả khách hàng.
+     * @return Danh sách các đối tượng Customer phù hợp với điều kiện tìm kiếm.
      */
     List<Customer> findCustomers(String keyword);
 
     /**
-     * Tìm khách hàng theo id.
+     * Tìm một khách hàng dựa trên ID của họ.
+     *
+     * @param id ID của khách hàng cần tìm.
+     * @return Một Optional chứa đối tượng Customer nếu tìm thấy, ngược lại là Optional rỗng.
      */
     Optional<Customer> findById(Long id);
 
     /**
-     * Tìm khách hàng theo mã.
+     * Tìm một khách hàng dựa trên mã khách hàng (customerCode).
+     *
+     * @param customerCode Mã định danh duy nhất của khách hàng.
+     * @return Một Optional chứa đối tượng Customer nếu tìm thấy.
      */
     Optional<Customer> findByCode(String customerCode);
 
     /**
-     * Lưu (thêm mới hoặc cập nhật) khách hàng.
+     * Lưu (thêm mới hoặc cập nhật) thông tin của một khách hàng.
      *
-     * @param customer entity cần lưu
-     * @return entity đã được persist
+     * @param customer Đối tượng Customer cần lưu.
+     * @return Đối tượng Customer sau khi đã được lưu vào cơ sở dữ liệu (persisted).
      */
     Customer save(Customer customer);
 
     /**
-     * Xóa cứng khách hàng khỏi CSDL.
-     * Chỉ dùng khi khách hàng chưa có đơn bán.
+     * Xóa một khách hàng khỏi cơ sở dữ liệu một cách vĩnh viễn (hard delete).
+     * Chú ý: Thao tác này chỉ nên được thực hiện khi chắc chắn rằng khách hàng không có các ràng buộc dữ liệu quan trọng,
+     * ví dụ như chưa từng có đơn hàng nào.
      *
-     * @param id id khách hàng cần xóa
+     * @param id ID của khách hàng cần xóa.
      */
     void deleteById(Long id);
 }

@@ -8,55 +8,85 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Entity đại diện cho bảng installment_plans.
- * Lưu từng kỳ thanh toán trả góp của một đơn bán.
+ * Lớp Entity, đại diện cho bảng `installment_plans` trong cơ sở dữ liệu.
+ * Mỗi đối tượng của lớp này tương ứng với một kỳ hạn thanh toán trong một kế hoạch trả góp của một đơn hàng.
  */
 @Entity
 @Table(
         name = "installment_plans",
+        // Thêm một ràng buộc duy nhất ở mức bảng để đảm bảo rằng trong cùng một đơn hàng,
+        // không thể có hai kỳ hạn có cùng số thứ tự (installment_no).
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_installment_plans_order_no", columnNames = {"sale_order_id", "installment_no"})
         }
 )
 public class InstallmentPlan {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều kỳ thanh toán có thể thuộc cùng một đơn bán.
+     * Mối quan hệ Nhiều-Một với thực thể SaleOrder.
+     * Nhiều kỳ hạn thanh toán có thể thuộc về cùng một đơn hàng.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sale_order_id", nullable = false)
     private SaleOrder saleOrder;
 
+    /**
+     * Số thứ tự của kỳ hạn thanh toán (ví dụ: kỳ 1, kỳ 2, ...).
+     */
     @Column(name = "installment_no", nullable = false)
     private Integer installmentNo;
 
+    /**
+     * Ngày đến hạn thanh toán cho kỳ này.
+     */
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
 
+    /**
+     * Số tiền phải trả cho kỳ hạn này.
+     */
     @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal amount = BigDecimal.ZERO;
 
+    /**
+     * Số tiền đã thực trả cho kỳ hạn này.
+     */
     @Column(name = "paid_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal paidAmount = BigDecimal.ZERO;
 
+    /**
+     * Trạng thái của kỳ hạn (ví dụ: UNPAID - chưa trả, PAID - đã trả, OVERDUE - quá hạn).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "installment_status", nullable = false, length = 30)
     private InstallmentStatus installmentStatus = InstallmentStatus.UNPAID;
 
+    /**
+     * Ghi chú cho kỳ hạn thanh toán.
+     */
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
+    // Constructors, Getters, and Setters...
     public InstallmentPlan() {
     }
 

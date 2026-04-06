@@ -10,101 +10,136 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity đại diện cho bảng sale_orders.
- * Lưu thông tin tổng quan của một đơn bán hàng.
+ * Lớp Entity, đại diện cho bảng `sale_orders` trong cơ sở dữ liệu.
+ * Lưu trữ thông tin tổng quan của một đơn hàng.
  */
 @Entity
 @Table(name = "sale_orders")
 public class SaleOrder {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã đơn hàng, là một định danh duy nhất, không được null.
+     */
     @Column(name = "order_code", nullable = false, unique = true, length = 50)
     private String orderCode;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều đơn bán có thể thuộc cùng một khách hàng.
+     * Mối quan hệ Nhiều-Một với thực thể Customer.
+     * Nhiều đơn hàng có thể thuộc về cùng một khách hàng.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều đơn bán có thể do cùng một nhân viên tạo.
+     * Mối quan hệ Nhiều-Một với thực thể Staff.
+     * Nhiều đơn hàng có thể được tạo bởi cùng một nhân viên.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staff_id", nullable = false)
     private Staff staff;
 
     /**
-     * Quan hệ nhiều - một:
-     * Nhiều đơn bán có thể áp dụng cùng một chương trình khuyến mãi.
+     * Mối quan hệ Nhiều-Một với thực thể Promotion.
+     * Nhiều đơn hàng có thể áp dụng cùng một chương trình khuyến mãi.
+     * `JoinColumn` này có thể null, vì không phải đơn hàng nào cũng có khuyến mãi.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion_id")
     private Promotion promotion;
 
+    /**
+     * Ngày tạo đơn hàng.
+     */
     @Column(name = "order_date", nullable = false)
     private LocalDateTime orderDate;
 
+    /**
+     * Tổng giá trị của đơn hàng trước khi áp dụng giảm giá.
+     */
     @Column(name = "total_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    /**
+     * Số tiền được giảm giá từ chương trình khuyến mãi.
+     */
     @Column(name = "discount_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
+    /**
+     * Số tiền cuối cùng khách hàng phải trả sau khi đã trừ giảm giá.
+     */
     @Column(name = "final_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal finalAmount = BigDecimal.ZERO;
 
+    /**
+     * Phương thức thanh toán chính của đơn hàng.
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false, length = 30)
     private PaymentMethod paymentMethod;
 
+    /**
+     * Trạng thái của đơn hàng (ví dụ: PENDING, CONFIRMED, PAID, CANCELLED).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false, length = 30)
     private OrderStatus orderStatus = OrderStatus.PENDING;
 
+    /**
+     * Ghi chú cho đơn hàng.
+     */
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Thời điểm bản ghi được cập nhật lần cuối.
+     */
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một đơn bán có thể có nhiều dòng chi tiết.
+     * Mối quan hệ Một-Nhiều với thực thể SaleOrderDetail.
+     * Một đơn hàng có thể bao gồm nhiều dòng chi tiết (mỗi dòng là một loại xe).
      */
     @OneToMany(mappedBy = "saleOrder", fetch = FetchType.LAZY)
     private List<SaleOrderDetail> saleOrderDetails = new ArrayList<>();
 
     /**
-     * Quan hệ một - nhiều:
-     * Một đơn bán có thể phát sinh nhiều lần thanh toán.
+     * Mối quan hệ Một-Nhiều với thực thể Payment.
+     * Một đơn hàng có thể có nhiều lần thanh toán.
      */
     @OneToMany(mappedBy = "saleOrder", fetch = FetchType.LAZY)
     private List<Payment> payments = new ArrayList<>();
 
     /**
-     * Quan hệ một - một:
-     * Mỗi đơn bán có tối đa một hóa đơn.
+     * Mối quan hệ Một-Một với thực thể Invoice.
+     * Mỗi đơn hàng có thể có một hóa đơn tương ứng.
      */
     @OneToOne(mappedBy = "saleOrder", fetch = FetchType.LAZY)
     private Invoice invoice;
 
     /**
-     * Quan hệ một - nhiều:
-     * Một đơn bán trả góp có thể có nhiều kỳ thanh toán.
+     * Mối quan hệ Một-Nhiều với thực thể InstallmentPlan.
+     * Một đơn hàng trả góp sẽ có nhiều kỳ hạn thanh toán.
      */
     @OneToMany(mappedBy = "saleOrder", fetch = FetchType.LAZY)
     private List<InstallmentPlan> installmentPlans = new ArrayList<>();
 
+    // Constructors, Getters, and Setters...
     public SaleOrder() {
     }
 
@@ -124,6 +159,9 @@ public class SaleOrder {
         this.note = note;
     }
 
+    /**
+     * Hàm callback của JPA, tự động gán ngày giờ hiện tại cho `orderDate` khi tạo mới.
+     */
     @PrePersist
     public void prePersist() {
         if (orderDate == null) {

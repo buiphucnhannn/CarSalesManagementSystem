@@ -15,6 +15,10 @@ import vn.edu.ute.carsalesms.util.PasswordUtil;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+/**
+ * Triển khai của AuthService.
+ * Chứa logic nghiệp vụ để xác thực người dùng.
+ */
 public class AuthServiceImpl implements AuthService {
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
@@ -23,14 +27,29 @@ public class AuthServiceImpl implements AuthService {
     private final AuditLogService auditLogService;
     private final AuthSessionStore authSessionStore;
 
+    /**
+     * Xây dựng một AuthServiceImpl mới với AccountDao đã cho.
+     * @param accountDao DAO sẽ được sử dụng để truy xuất thông tin tài khoản.
+     */
     public AuthServiceImpl(AccountDao accountDao) {
         this(accountDao, new NoOpAuditLogService(), new CurrentAuthSessionStore());
     }
 
+    /**
+     * Xây dựng một AuthServiceImpl mới với AccountDao và AuditLogService đã cho.
+     * @param accountDao DAO sẽ được sử dụng để truy xuất thông tin tài khoản.
+     * @param auditLogService dịch vụ sẽ được sử dụng để ghi lại các hành động.
+     */
     public AuthServiceImpl(AccountDao accountDao, AuditLogService auditLogService) {
         this(accountDao, auditLogService, new CurrentAuthSessionStore());
     }
 
+    /**
+     * Xây dựng một AuthServiceImpl mới với AccountDao, AuditLogService và AuthSessionStore đã cho.
+     * @param accountDao DAO sẽ được sử dụng để truy xuất thông tin tài khoản.
+     * @param auditLogService dịch vụ sẽ được sử dụng để ghi lại các hành động.
+     * @param authSessionStore kho lưu trữ sẽ được sử dụng để lưu trữ thông tin người dùng đã xác thực.
+     */
     public AuthServiceImpl(AccountDao accountDao,
                            AuditLogService auditLogService,
                            AuthSessionStore authSessionStore) {
@@ -39,6 +58,12 @@ public class AuthServiceImpl implements AuthService {
         this.authSessionStore = Objects.requireNonNull(authSessionStore, "authSessionStore is required");
     }
 
+    /**
+     * Cố gắng đăng nhập người dùng với tên người dùng và mật khẩu đã cho.
+     * @param username tên người dùng để xác thực.
+     * @param rawPassword mật khẩu để xác thực.
+     * @return một đối tượng AuthenticatedUser nếu xác thực thành công, nếu không trả về null.
+     */
     @Override
     public AuthenticatedUser login(String username, String rawPassword) {
         String normalizedUsername = username == null ? "" : username.trim().toLowerCase();
@@ -88,6 +113,10 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
+    /**
+     * Xác thực trạng thái của tài khoản.
+     * @param account tài khoản cần xác thực.
+     */
     private void validateAccountState(Account account) {
         if (account.getStatus() != Status.ACTIVE) {
             throw new IllegalStateException("Tài khoản đang tạm ngưng hoạt động.");
@@ -100,6 +129,10 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * Xử lý một lần đăng nhập không thành công.
+     * @param account tài khoản đã đăng nhập không thành công.
+     */
     private void handleFailedLogin(Account account) {
         int failedAttempts = account.getFailedLoginAttempts() == null ? 0 : account.getFailedLoginAttempts();
         failedAttempts++;
@@ -110,6 +143,11 @@ public class AuthServiceImpl implements AuthService {
         accountDao.save(account);
     }
 
+    /**
+     * Chuyển đổi một đối tượng Account thành một đối tượng AuthenticatedUser.
+     * @param account tài khoản cần chuyển đổi.
+     * @return đối tượng AuthenticatedUser.
+     */
     private AuthenticatedUser toAuthenticatedUser(Account account) {
         Staff staff = account.getStaff();
         String branchName = staff.getBranch() == null ? "N/A" : staff.getBranch().getBranchName();
@@ -127,5 +165,3 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 }
-
-

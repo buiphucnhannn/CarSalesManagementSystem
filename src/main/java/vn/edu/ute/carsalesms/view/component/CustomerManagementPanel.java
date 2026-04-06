@@ -23,55 +23,56 @@ import java.util.Optional;
 /**
  * Panel quản lý khách hàng – Module F04.
  * Áp dụng mô hình MVC:
- *  - View (JPanel này) chỉ hiển thị dữ liệu
- *  - Controller nhận lệnh, gọi Service
- *  - Service thực hiện nghiệp vụ, DAO thao tác CSDL
+ *  - View (JPanel này) chỉ hiển thị dữ liệu và nhận tương tác người dùng.
+ *  - Controller (CustomerManagementController) nhận lệnh từ View, gọi Service để xử lý nghiệp vụ.
+ *  - Service thực hiện nghiệp vụ, và DAO (Data Access Object) thao tác với cơ sở dữ liệu.
  *
  * Cấu trúc nội bộ:
- *  - CustomerManagementPanel    (outer panel - layout + factory methods)
- *  - CustomerEditorDialog       (static inner class - dialog thêm/sửa)
+ *  - CustomerManagementPanel: Lớp chính, chứa layout và các phương thức factory để tạo UI.
+ *  - CustomerEditorDialog: Lớp nội tĩnh (static inner class) cho dialog thêm/sửa thông tin khách hàng.
  *
- * Tuân thủ Open/Closed: thêm tính năng bằng cách mở rộng, không sửa code cũ.
+ * Thiết kế này tuân thủ nguyên tắc Open/Closed: có thể thêm tính năng mới bằng cách mở rộng (ví dụ, thêm panel mới)
+ * mà không cần sửa đổi mã nguồn đã có.
  */
 public class CustomerManagementPanel extends JPanel {
 
-    // ─── Constants ────────────────────────────────────────────────────────
+    // ─── Hằng số ────────────────────────────────────────────────────────
 
-    /** Định dạng ngày hiển thị trong bảng và dialog. */
+    /** Định dạng ngày tháng được sử dụng trong bảng và dialog (ví dụ: 25/12/2023). */
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    /** Tên các cột trong JTable. */
+    /** Tên các cột trong bảng JTable hiển thị danh sách khách hàng. */
     private static final String[] COLUMNS = {
             "Mã KH", "Họ tên", "Điện thoại", "Email", "Giới tính",
             "Ngày sinh", "CCCD", "Địa chỉ", "Ngày tạo"
     };
 
-    // ─── Fields ───────────────────────────────────────────────────────────
+    // ─── Các trường (Fields) ───────────────────────────────────────────────────────────
 
-    /** Controller nhận lệnh từ View, gọi Service tương ứng. */
+    /** Controller xử lý logic nghiệp vụ, nhận lệnh từ View này. */
     private final CustomerManagementController controller;
 
-    /** Model dữ liệu của JTable. */
+    /** Model chứa dữ liệu cho JTable. */
     private final DefaultTableModel tableModel;
 
-    /** JTable hiển thị danh sách khách hàng. */
+    /** Bảng hiển thị danh sách khách hàng. */
     private final JTable table;
 
-    /** Row sorter hỗ trợ sắp xếp và lọc nhanh client-side. */
+    /** Hỗ trợ sắp xếp và lọc dữ liệu trên JTable phía client. */
     private final TableRowSorter<DefaultTableModel> sorter;
 
-    /** Ô tìm kiếm trên thanh toolbar. */
+    /** Ô văn bản để người dùng nhập từ khóa tìm kiếm. */
     private final JTextField searchField = new JTextField();
 
-    /** Cache danh sách row hiện tại để resolve selection → entity. */
+    /** Lưu trữ danh sách các đối tượng CustomerItem hiện đang hiển thị trong bảng. */
     private List<CustomerItem> rows = new ArrayList<>();
 
     // ─── Constructor ─────────────────────────────────────────────────────
 
     /**
-     * Khởi tạo panel, build UI và load dữ liệu ban đầu.
+     * Khởi tạo panel, xây dựng giao diện người dùng và tải dữ liệu ban đầu.
      *
-     * @param controller controller quản lý khách hàng (không null)
+     * @param controller Controller quản lý khách hàng (không được null).
      */
     public CustomerManagementPanel(CustomerManagementController controller) {
         this.controller = Objects.requireNonNull(controller, "controller is required");
@@ -80,11 +81,11 @@ public class CustomerManagementPanel extends JPanel {
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
 
-        // Khởi tạo model - không cho edit trực tiếp trên cell
+        // Khởi tạo table model, không cho phép sửa trực tiếp trên ô của bảng.
         tableModel = new DefaultTableModel(COLUMNS, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Chỉ sửa qua dialog
+                return false; // Việc sửa đổi chỉ được thực hiện thông qua dialog.
             }
         };
         table = new JTable(tableModel);
@@ -95,37 +96,37 @@ public class CustomerManagementPanel extends JPanel {
         add(buildToolbar(), BorderLayout.NORTH);
         add(createTableCard(table), BorderLayout.CENTER);
 
-        // Load dữ liệu khi panel được tạo
+        // Tải dữ liệu lần đầu khi panel được tạo.
         refreshData();
     }
 
-    // ─── Toolbar ─────────────────────────────────────────────────────────
+    // ─── Thanh công cụ (Toolbar) ─────────────────────────────────────────────────────────
 
     /**
-     * Xây thanh toolbar gồm:
-     *  - Trái: ô tìm kiếm + nút Tìm
-     *  - Phải: Làm mới, Thêm, Sửa, Xóa
+     * Xây dựng thanh công cụ (toolbar) bao gồm:
+     *  - Bên trái: Ô tìm kiếm và nút "Tìm".
+     *  - Bên phải: Các nút "Làm mới", "Thêm", "Sửa", "Xóa".
      */
     private JPanel buildToolbar() {
         JPanel panel = new JPanel(new BorderLayout(8, 0));
         panel.setOpaque(false);
 
-        // ── Phần trái: tìm kiếm ──
+        // ── Phần bên trái: tìm kiếm ──
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         left.setOpaque(false);
         searchField.setPreferredSize(new Dimension(260, 30));
 
         JButton searchBtn = createActionButton("Tìm");
-        // Lambda: gọi refreshData khi nhấn Tìm
+        // Sử dụng biểu thức lambda để gọi refreshData() khi nhấn nút "Tìm".
         searchBtn.addActionListener(e -> refreshData());
-        // Lọc client-side nhanh khi nhấn Enter
+        // Lọc nhanh phía client khi người dùng nhấn Enter trong ô tìm kiếm.
         searchField.addActionListener(e -> applyQuickFilter());
 
         left.add(new JLabel("Tìm kiếm:"));
         left.add(searchField);
         left.add(searchBtn);
 
-        // ── Phần phải: CRUD buttons ──
+        // ── Phần bên phải: các nút CRUD ──
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         right.setOpaque(false);
 
@@ -134,9 +135,9 @@ public class CustomerManagementPanel extends JPanel {
         JButton editBtn    = createActionButton("Sửa");
         JButton deleteBtn  = createDangerButton("Xóa");
 
-        // Lambda: mỗi nút gọi phương thức xử lý tương ứng
+        // Gán hành động cho từng nút bằng biểu thức lambda.
         refreshBtn.addActionListener(e -> refreshData());
-        addBtn.addActionListener(e -> showEditor(null));
+        addBtn.addActionListener(e -> showEditor(null)); // Mở dialog thêm mới.
         editBtn.addActionListener(e -> selectedRow()
                 .ifPresentOrElse(this::showEditor, () -> showInfo("Vui lòng chọn khách hàng cần sửa.")));
         deleteBtn.addActionListener(e -> selectedRow()
@@ -152,17 +153,17 @@ public class CustomerManagementPanel extends JPanel {
         return panel;
     }
 
-    // ─── Data operations ─────────────────────────────────────────────────
+    // ─── Thao tác dữ liệu ─────────────────────────────────────────────────
 
     /**
-     * Tải lại dữ liệu từ service theo keyword hiện tại.
-     * Dùng Stream API để map DTO → hàng trong bảng.
+     * Tải lại dữ liệu từ service dựa trên từ khóa tìm kiếm hiện tại.
+     * Sử dụng Stream API để chuyển đổi (map) từ DTO (Data Transfer Object) sang các hàng của bảng.
      */
     public void refreshData() {
         try {
             rows = controller.loadCustomers(searchField.getText());
-            tableModel.setRowCount(0);
-            // Stream: map từng CustomerItem thành mảng Object[] cho bảng
+            tableModel.setRowCount(0); // Xóa dữ liệu cũ trong bảng.
+            // Sử dụng stream để xử lý: map mỗi CustomerItem thành một mảng Object[] cho bảng.
             rows.stream()
                     .map(item -> new Object[]{
                             item.customerCode(),
@@ -175,30 +176,30 @@ public class CustomerManagementPanel extends JPanel {
                             item.address(),
                             item.createdAt() == null ? "" : item.createdAt().toLocalDate().format(DATE_FMT)
                     })
-                    .forEach(tableModel::addRow);
+                    .forEach(tableModel::addRow); // Thêm hàng mới vào table model.
         } catch (Exception ex) {
             showError("Lỗi tải danh sách khách hàng: " + ex.getMessage());
         }
     }
 
     /**
-     * Lọc nhanh client-side theo keyword đang nhập (không query DB).
+     * Lọc nhanh dữ liệu phía client dựa trên từ khóa đang nhập (không cần truy vấn lại CSDL).
      */
     private void applyQuickFilter() {
         String kw = searchField.getText();
         if (kw == null || kw.isBlank()) {
-            sorter.setRowFilter(null);
+            sorter.setRowFilter(null); // Bỏ lọc nếu không có từ khóa.
             return;
         }
-        // RowFilter regex không phân biệt hoa/thường, khớp cột Mã KH và Họ tên
+        // Sử dụng RowFilter với regex để lọc không phân biệt chữ hoa/thường, khớp trên các cột Mã KH, Họ tên, và Điện thoại.
         sorter.setRowFilter(RowFilter.regexFilter(
                 "(?i)" + java.util.regex.Pattern.quote(kw.trim()), 0, 1, 2));
     }
 
     /**
-     * Mở dialog thêm mới hoặc sửa khách hàng.
+     * Mở dialog để thêm mới hoặc sửa thông tin khách hàng.
      *
-     * @param existing null nếu thêm mới, non-null nếu sửa
+     * @param existing `null` nếu thêm mới, hoặc đối tượng `CustomerItem` nếu sửa.
      */
     private void showEditor(CustomerItem existing) {
         String nextCode = existing == null ? controller.loadNextCustomerCode() : null;
@@ -206,7 +207,7 @@ public class CustomerManagementPanel extends JPanel {
                 getDialogWindow(), existing, nextCode);
         dialog.setVisible(true);
 
-        // Nếu người dùng nhấn Lưu thì dialog trả về request
+        // Nếu người dùng nhấn "Lưu", dialog sẽ trả về một đối tượng request.
         dialog.getResult().ifPresent(request -> {
             try {
                 if (existing == null) {
@@ -216,7 +217,7 @@ public class CustomerManagementPanel extends JPanel {
                     controller.updateCustomer(request);
                     showInfo("Cập nhật khách hàng thành công.");
                 }
-                refreshData(); // Reload bảng sau khi thao tác
+                refreshData(); // Tải lại dữ liệu bảng sau khi thao tác thành công.
             } catch (Exception ex) {
                 showError(ex.getMessage());
             }
@@ -224,9 +225,9 @@ public class CustomerManagementPanel extends JPanel {
     }
 
     /**
-     * Xác nhận và thực hiện xóa khách hàng.
+     * Hiển thị hộp thoại xác nhận và thực hiện xóa khách hàng.
      *
-     * @param item khách hàng cần xóa
+     * @param item Khách hàng cần xóa.
      */
     private void deleteCustomer(CustomerItem item) {
         int confirm = JOptionPane.showConfirmDialog(
@@ -248,11 +249,11 @@ public class CustomerManagementPanel extends JPanel {
         }
     }
 
-    // ─── Selection helper ─────────────────────────────────────────────────
+    // ─── Trợ giúp lựa chọn (Selection helper) ─────────────────────────────────────────────────
 
     /**
-     * Lấy CustomerItem đang được chọn trong bảng.
-     * Chuyển đổi selectedRow → modelRow để tránh sai lệch khi sorter bật.
+     * Lấy đối tượng CustomerItem tương ứng với hàng đang được chọn trong bảng.
+     * Chuyển đổi chỉ số hàng từ view sang model để đảm bảo chính xác khi có bộ lọc (sorter).
      */
     private Optional<CustomerItem> selectedRow() {
         int viewRow = table.getSelectedRow();
@@ -262,10 +263,10 @@ public class CustomerManagementPanel extends JPanel {
         return Optional.of(rows.get(modelRow));
     }
 
-    // ─── UI factory helpers ───────────────────────────────────────────────
+    // ─── Trợ giúp tạo UI (UI factory helpers) ───────────────────────────────────────────────
 
     /**
-     * Tạo nút hành động với style nhất quán (màu xanh).
+     * Tạo một nút hành động với phong cách nhất quán (thường là màu xanh).
      */
     private JButton createActionButton(String title) {
         JButton btn = new JButton(title);
@@ -280,7 +281,7 @@ public class CustomerManagementPanel extends JPanel {
     }
 
     /**
-     * Tạo nút nguy hiểm (màu đỏ, dùng cho xóa).
+     * Tạo một nút hành động nguy hiểm (thường là màu đỏ, dùng cho việc xóa).
      */
     private JButton createDangerButton(String title) {
         JButton btn = createActionButton(title);
@@ -289,7 +290,7 @@ public class CustomerManagementPanel extends JPanel {
     }
 
     /**
-     * Bao JTable trong JScrollPane có style nhất quán với toàn ứng dụng.
+     * Bọc JTable trong một JScrollPane và áp dụng phong cách nhất quán với toàn bộ ứng dụng.
      */
     private JPanel createTableCard(JTable tbl) {
         JPanel card = new JPanel(new BorderLayout());
@@ -318,10 +319,10 @@ public class CustomerManagementPanel extends JPanel {
     }
 
     /**
-     * Cấu hình chiều rộng ưu tiên cho các cột.
+     * Cấu hình chiều rộng ưu tiên cho các cột của bảng.
      */
     private void configureTableColumns() {
-        // Mã KH hẹp, Họ tên + Địa chỉ rộng hơn
+        // Cột Mã KH hẹp, trong khi Họ tên và Địa chỉ rộng hơn.
         table.getColumnModel().getColumn(0).setPreferredWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(180);
         table.getColumnModel().getColumn(2).setPreferredWidth(110);
@@ -332,7 +333,7 @@ public class CustomerManagementPanel extends JPanel {
         table.getColumnModel().getColumn(7).setPreferredWidth(200);
         table.getColumnModel().getColumn(8).setPreferredWidth(90);
 
-        // Căn giữa cột giới tính và ngày
+        // Căn giữa nội dung cho các cột Giới tính và Ngày.
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
         table.getColumnModel().getColumn(4).setCellRenderer(center);
@@ -340,9 +341,9 @@ public class CustomerManagementPanel extends JPanel {
         table.getColumnModel().getColumn(8).setCellRenderer(center);
     }
 
-    // ─── Utils ────────────────────────────────────────────────────────────
+    // ─── Tiện ích (Utils) ────────────────────────────────────────────────────────────
 
-    /** Chuyển enum Gender sang nhãn tiếng Việt. */
+    /** Chuyển đổi enum Gender sang nhãn tiếng Việt để hiển thị. */
     private String genderLabel(Gender gender) {
         return switch (gender) {
             case MALE   -> "Nam";
@@ -372,41 +373,41 @@ public class CustomerManagementPanel extends JPanel {
         return SwingUtilities.getWindowAncestor(owner);
     }
 
-    // ─── Inner Dialog ─────────────────────────────────────────────────────
+    // ─── Lớp nội Dialog ─────────────────────────────────────────────────────
 
     /**
-     * Dialog thêm mới hoặc sửa thông tin khách hàng.
-     * Là {@code static final} inner class để không giữ tham chiếu đến outer panel
-     * (tránh memory leak, tuân thủ encapsulation).
+     * Dialog để thêm mới hoặc sửa thông tin khách hàng.
+     * Đây là một lớp nội tĩnh (static final inner class) để không giữ tham chiếu đến panel bên ngoài,
+     * giúp tránh rò rỉ bộ nhớ (memory leak) và tuân thủ nguyên tắc đóng gói (encapsulation).
      *
-     * Luồng:
-     * 1. Mở dialog (setVisible true)
-     * 2. Người dùng nhập liệu → nhấn Lưu → gọi onSave()
-     * 3. Outer panel gọi getResult() để nhận Optional<CustomerCommandRequest>
+     * Luồng hoạt động:
+     * 1. Mở dialog (gọi `setVisible(true)`).
+     * 2. Người dùng nhập liệu và nhấn "Lưu", gọi phương thức `onSave()`.
+     * 3. Panel bên ngoài gọi `getResult()` để nhận `Optional<CustomerCommandRequest>`.
      */
     private static final class CustomerEditorDialog extends JDialog {
 
-        // ── Form fields ──
+        // ── Các trường của form ──
         private final JTextField codeField        = new JTextField();
         private final JTextField fullNameField     = new JTextField();
         private final JTextField phoneField        = new JTextField();
         private final JTextField emailField        = new JTextField();
         private final JComboBox<Gender> genderCombo =
                 new JComboBox<>(new Gender[]{null, Gender.MALE, Gender.FEMALE, Gender.OTHER});
-        private final JTextField dobField          = new JTextField();  // dd/MM/yyyy
+        private final JTextField dobField          = new JTextField();  // Định dạng: dd/MM/yyyy
         private final JTextField identityField     = new JTextField();
         private final JTextField addressField      = new JTextField();
         private final JTextArea  noteArea          = new JTextArea(3, 20);
 
-        /** Kết quả trả về sau khi người dùng nhấn Lưu. */
+        /** Kết quả được trả về sau khi người dùng nhấn "Lưu". */
         private CustomerCommandRequest result;
 
-        /** Id khách hàng đang sửa (null nếu thêm mới). */
+        /** ID của khách hàng đang được sửa (null nếu là thêm mới). */
         private final Long editingId;
 
         /**
-         * @param owner    frame/dialog cha
-         * @param existing null = thêm mới; non-null = sửa
+         * @param owner    Cửa sổ cha (frame hoặc dialog).
+         * @param existing `null` nếu thêm mới; khác `null` nếu sửa.
          */
         private CustomerEditorDialog(Window owner, CustomerItem existing, String nextCode) {
             super(owner,
@@ -417,11 +418,11 @@ public class CustomerManagementPanel extends JPanel {
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
 
-            // ── Form grid ──
+            // ── Lưới form ──
             JPanel form = new JPanel(new GridLayout(9, 2, 8, 6));
             form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
 
-            // Ghi chú định dạng ngày
+            // Ghi chú về định dạng ngày.
             dobField.setToolTipText("Định dạng: dd/MM/yyyy");
 
             form.add(new JLabel("Mã khách hàng *"));  form.add(codeField);
@@ -436,7 +437,7 @@ public class CustomerManagementPanel extends JPanel {
             JScrollPane noteScroll = new JScrollPane(noteArea);
             form.add(noteScroll);
 
-            // Điền dữ liệu nếu đang sửa
+            // Điền dữ liệu có sẵn nếu đang ở chế độ sửa.
             if (existing != null) {
                 codeField.setText(existing.customerCode());
                 codeField.setEditable(true);
@@ -453,9 +454,10 @@ public class CustomerManagementPanel extends JPanel {
             } else {
                 codeField.setText(nextCode);
                 codeField.setEditable(false);
+                // Thêm mới: để trống các trường khác.
             }
 
-            // ── Action buttons ──
+            // ── Các nút hành động ──
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
             JButton cancelBtn = new JButton("Hủy");
             JButton saveBtn   = new JButton("Lưu");
@@ -479,11 +481,11 @@ public class CustomerManagementPanel extends JPanel {
         }
 
         /**
-         * Đọc dữ liệu từ form, validate cơ bản, tạo request.
-         * Nếu parse thất bại sẽ hiển thị thông báo lỗi và không đóng dialog.
+         * Đọc dữ liệu từ form, thực hiện xác thực cơ bản và tạo đối tượng request.
+         * Nếu việc phân tích cú pháp thất bại, sẽ hiển thị thông báo lỗi và không đóng dialog.
          */
         private void onSave() {
-            // Kiểm tra trường bắt buộc
+            // Kiểm tra các trường bắt buộc.
             if (codeField.getText().isBlank() ||
                     fullNameField.getText().isBlank() ||
                     phoneField.getText().isBlank()) {
@@ -493,7 +495,7 @@ public class CustomerManagementPanel extends JPanel {
                 return;
             }
 
-            // Parse ngày sinh (tùy chọn)
+            // Phân tích cú pháp ngày sinh (tùy chọn).
             LocalDate dob = null;
             String dobText = dobField.getText().trim();
             if (!dobText.isBlank()) {
@@ -507,7 +509,7 @@ public class CustomerManagementPanel extends JPanel {
                 }
             }
 
-            // Tạo request để trả về outer panel
+            // Tạo đối tượng request để trả về cho panel bên ngoài.
             result = new CustomerCommandRequest(
                     editingId,
                     codeField.getText().trim().toUpperCase(),
@@ -520,12 +522,12 @@ public class CustomerManagementPanel extends JPanel {
                     addressField.getText().trim().isEmpty() ? null : addressField.getText().trim(),
                     noteArea.getText().trim().isEmpty() ? null : noteArea.getText().trim()
             );
-            dispose();
+            dispose(); // Đóng dialog.
         }
 
         /**
-         * Trả về request sau khi dialog đóng.
-         * Optional.empty() nếu người dùng nhấn Hủy hoặc đóng dialog.
+         * Trả về đối tượng request sau khi dialog đã đóng.
+         * Sẽ là `Optional.empty()` nếu người dùng nhấn "Hủy" hoặc đóng dialog.
          */
         private Optional<CustomerCommandRequest> getResult() {
             return Optional.ofNullable(result);

@@ -7,47 +7,73 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Entity đại diện cho bảng invoices.
- * Lưu thông tin hóa đơn của đơn bán.
+ * Lớp Entity, đại diện cho bảng `invoices` trong cơ sở dữ liệu.
+ * Lưu trữ thông tin của một hóa đơn được phát hành cho một đơn hàng.
  */
 @Entity
 @Table(name = "invoices")
 public class Invoice {
 
+    /**
+     * Khóa chính của bảng, tự động tăng.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Mã hóa đơn, là một định danh duy nhất, không được null.
+     */
     @Column(name = "invoice_code", nullable = false, unique = true, length = 50)
     private String invoiceCode;
 
     /**
-     * Quan hệ một - một:
-     * Mỗi hóa đơn gắn với duy nhất một đơn bán.
+     * Mối quan hệ Một-Một (One-to-One) với thực thể SaleOrder.
+     * Mỗi hóa đơn được gắn với một và chỉ một đơn hàng.
+     * `unique = true` trên `JoinColumn` củng cố thêm ràng buộc 1-1 ở mức cơ sở dữ liệu.
      */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sale_order_id", nullable = false, unique = true)
     private SaleOrder saleOrder;
 
+    /**
+     * Ngày phát hành hóa đơn.
+     */
     @Column(name = "issued_date", nullable = false)
     private LocalDateTime issuedDate;
 
+    /**
+     * Trạng thái của hóa đơn (ví dụ: PENDING, PAID, CANCELLED).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "invoice_status", nullable = false, length = 30)
     private InvoiceStatus invoiceStatus = InvoiceStatus.PENDING;
 
+    /**
+     * Số tiền thuế (VAT) của hóa đơn.
+     */
     @Column(name = "tax_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal taxAmount = BigDecimal.ZERO;
 
+    /**
+     * Tổng số tiền cuối cùng của hóa đơn (đã bao gồm thuế).
+     */
     @Column(name = "total_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    /**
+     * Ghi chú cho hóa đơn.
+     */
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    /**
+     * Thời điểm bản ghi được tạo.
+     */
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // Constructors, Getters, and Setters...
     public Invoice() {
     }
 
@@ -62,6 +88,10 @@ public class Invoice {
         this.note = note;
     }
 
+    /**
+     * Hàm callback của JPA, được gọi tự động trước khi một entity được lưu lần đầu (persist).
+     * Dùng để gán giá trị mặc định cho `issuedDate` nếu nó chưa được thiết lập.
+     */
     @PrePersist
     public void prePersist() {
         if (issuedDate == null) {
