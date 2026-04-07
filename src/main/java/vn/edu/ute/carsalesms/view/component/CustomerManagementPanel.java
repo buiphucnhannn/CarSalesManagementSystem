@@ -203,25 +203,20 @@ public class CustomerManagementPanel extends JPanel {
      */
     private void showEditor(CustomerItem existing) {
         String nextCode = existing == null ? controller.loadNextCustomerCode() : null;
+        SaveAction saveAction = existing == null ? controller::createCustomer : controller::updateCustomer;
         CustomerEditorDialog dialog = new CustomerEditorDialog(
-                getDialogWindow(), existing, nextCode);
+                getDialogWindow(), existing, nextCode, saveAction);
         dialog.setVisible(true);
 
-        // Nếu người dùng nhấn "Lưu", dialog sẽ trả về một đối tượng request.
         dialog.getResult().ifPresent(request -> {
-            try {
-                if (existing == null) {
-                    controller.createCustomer(request);
-                    showInfo("Thêm khách hàng thành công.");
-                } else {
-                    controller.updateCustomer(request);
-                    showInfo("Cập nhật khách hàng thành công.");
-                }
-                refreshData(); // Tải lại dữ liệu bảng sau khi thao tác thành công.
-            } catch (Exception ex) {
-                showError(ex.getMessage());
-            }
+            showInfo(existing == null ? "Thêm khách hàng thành công." : "Cập nhật khách hàng thành công.");
+            refreshData(); // Tải lại dữ liệu bảng sau khi thao tác thành công.
         });
+    }
+
+    @FunctionalInterface
+    private interface SaveAction {
+        void save(CustomerCommandRequest request) throws Exception;
     }
 
     /**
@@ -404,43 +399,59 @@ public class CustomerManagementPanel extends JPanel {
 
         /** ID của khách hàng đang được sửa (null nếu là thêm mới). */
         private final Long editingId;
+        private final SaveAction saveAction;
 
         /**
          * @param owner    Cửa sổ cha (frame hoặc dialog).
          * @param existing `null` nếu thêm mới; khác `null` nếu sửa.
          */
-        private CustomerEditorDialog(Window owner, CustomerItem existing, String nextCode) {
+        private CustomerEditorDialog(Window owner, CustomerItem existing, String nextCode, SaveAction saveAction) {
             super(owner,
                     existing == null ? "Thêm khách hàng" : "Sửa khách hàng",
                     ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
+            this.saveAction = Objects.requireNonNull(saveAction, "saveAction is required");
 
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
 
             // ── Lưới form ──
-            JPanel form = new JPanel(new GridLayout(9, 2, 8, 6));
+            JPanel form = new JPanel(new GridBagLayout());
             form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
 
             // Ghi chú về định dạng ngày.
             dobField.setToolTipText("Định dạng: dd/MM/yyyy");
 
-            form.add(new JLabel("Mã khách hàng *"));  form.add(codeField);
-            form.add(new JLabel("Họ tên *"));          form.add(fullNameField);
-            form.add(new JLabel("Điện thoại *"));      form.add(phoneField);
-            form.add(new JLabel("Email"));              form.add(emailField);
-            form.add(new JLabel("Giới tính"));         form.add(genderCombo);
-            form.add(new JLabel("Ngày sinh (dd/MM/yyyy)")); form.add(dobField);
-            form.add(new JLabel("CCCD/CMND"));         form.add(identityField);
-            form.add(new JLabel("Địa chỉ"));           form.add(addressField);
-            form.add(new JLabel("Ghi chú"));
+            codeField.setPreferredSize(new Dimension(280, 34));
+            fullNameField.setPreferredSize(new Dimension(280, 34));
+            phoneField.setPreferredSize(new Dimension(280, 34));
+            emailField.setPreferredSize(new Dimension(280, 34));
+            dobField.setPreferredSize(new Dimension(280, 34));
+            identityField.setPreferredSize(new Dimension(280, 34));
+            addressField.setPreferredSize(new Dimension(280, 34));
+
+            addFormRow(form, 0, "Mã khách hàng *", codeField, false);
+            addFormRow(form, 1, "Họ tên *", fullNameField, false);
+            addFormRow(form, 2, "Điện thoại *", phoneField, false);
+            addFormRow(form, 3, "Email", emailField, false);
+            addFormRow(form, 4, "Giới tính", genderCombo, false);
+            addFormRow(form, 5, "Ngày sinh (dd/MM/yyyy)", dobField, false);
+            addFormRow(form, 6, "CCCD/CMND", identityField, false);
+            addFormRow(form, 7, "Địa chỉ", addressField, false);
+
+            noteArea.setRows(6);
+            noteArea.setColumns(28);
+            noteArea.setLineWrap(true);
+            noteArea.setWrapStyleWord(true);
             JScrollPane noteScroll = new JScrollPane(noteArea);
-            form.add(noteScroll);
+            noteScroll.setPreferredSize(new Dimension(280, 130));
+            addFormRow(form, 8, "Ghi chú", noteScroll, true);
 
             // Điền dữ liệu có sẵn nếu đang ở chế độ sửa.
             if (existing != null) {
                 codeField.setText(existing.customerCode());
-                codeField.setEditable(true);
+                // Mã KH được hệ thống quản lý, không cho sửa ở cả chế độ thêm/sửa.
+                codeField.setEditable(false);
                 fullNameField.setText(existing.fullName());
                 phoneField.setText(existing.phone());
                 emailField.setText(existing.email());
@@ -478,6 +489,27 @@ public class CustomerManagementPanel extends JPanel {
             setMinimumSize(new Dimension(500, 460));
             setSize(getMinimumSize());
             setLocationRelativeTo(owner);
+        }
+
+        private void addFormRow(JPanel form, int row, String labelText, JComponent input, boolean expandable) {
+            GridBagConstraints labelGbc = new GridBagConstraints();
+            labelGbc.gridx = 0;
+            labelGbc.gridy = row;
+            labelGbc.anchor = GridBagConstraints.NORTHWEST;
+            labelGbc.insets = new Insets(4, 4, 4, 10);
+            form.add(new JLabel(labelText), labelGbc);
+
+            GridBagConstraints inputGbc = new GridBagConstraints();
+            inputGbc.gridx = 1;
+            inputGbc.gridy = row;
+            inputGbc.fill = GridBagConstraints.HORIZONTAL;
+            inputGbc.weightx = 1.0;
+            inputGbc.weighty = expandable ? 1.0 : 0;
+            inputGbc.insets = new Insets(4, 0, 4, 4);
+            if (expandable) {
+                inputGbc.fill = GridBagConstraints.BOTH;
+            }
+            form.add(input, inputGbc);
         }
 
         /**
@@ -522,7 +554,16 @@ public class CustomerManagementPanel extends JPanel {
                     addressField.getText().trim().isEmpty() ? null : addressField.getText().trim(),
                     noteArea.getText().trim().isEmpty() ? null : noteArea.getText().trim()
             );
-            dispose(); // Đóng dialog.
+            try {
+                saveAction.save(result);
+                dispose(); // Chỉ đóng khi lưu thật sự thành công.
+            } catch (Exception ex) {
+                result = null;
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                        ex.getMessage(),
+                        "Lỗi nhập liệu",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         /**

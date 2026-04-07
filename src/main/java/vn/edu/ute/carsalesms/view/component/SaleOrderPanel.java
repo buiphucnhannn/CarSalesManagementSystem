@@ -32,6 +32,11 @@ import java.util.Optional;
  */
 public class SaleOrderPanel extends JPanel {
 
+    @FunctionalInterface
+    private interface SaveAction {
+        void save(CreateOrderRequest request) throws Exception;
+    }
+
     // Định dạng ngày và giờ được sử dụng để hiển thị trong bảng.
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private final SaleOrderController controller; // Controller để xử lý các thao tác liên quan đến đơn bán hàng.
@@ -249,20 +254,16 @@ public class SaleOrderPanel extends JPanel {
      */
     private void showCreateOrderDialog() {
         SaleOrderMetadata metadata = reloadMetadata(); // Tải metadata mới nhất.
+        SaveAction saveAction = controller::createOrder;
         // Giả sử có một nhân viên đang đăng nhập (trong hệ thống thực tế sẽ dùng session).
         // Hiện tại, để đơn giản, cho phép chọn nhân viên từ metadata.
         SaleOrderCreateDialog dialog = new SaleOrderCreateDialog(
-                getDialogParent(), metadata);
+                getDialogParent(), metadata, saveAction);
         dialog.setVisible(true); // Hiển thị dialog.
 
         dialog.getResult().ifPresent(req -> {
-            try {
-                controller.createOrder(req); // Tạo đơn hàng thông qua controller.
-                showInfo("Tạo đơn hàng thành công.");
-                refreshData(); // Tải lại dữ liệu để cập nhật bảng.
-            } catch (Exception ex) {
-                showError(ex.getMessage()); // Hiển thị lỗi.
-            }
+            showInfo("Tạo đơn hàng thành công.");
+            refreshData(); // Tải lại dữ liệu để cập nhật bảng.
         });
     }
 
@@ -467,14 +468,16 @@ public class SaleOrderPanel extends JPanel {
         private final List<OrderDetailRequest> cart = new ArrayList<>(); // Danh sách các mặt hàng trong giỏ hàng.
 
         private CreateOrderRequest result; // Đối tượng CreateOrderRequest được tạo sau khi người dùng lưu.
+        private final SaveAction saveAction;
 
         /**
          * Constructor khởi tạo SaleOrderCreateDialog.
          * @param owner Component cha của dialog.
          * @param metadata Đối tượng SaleOrderMetadata chứa các dữ liệu cần thiết (khách hàng, nhân viên, khuyến mãi, xe).
          */
-        private SaleOrderCreateDialog(Component owner, SaleOrderMetadata metadata) {
+        private SaleOrderCreateDialog(Component owner, SaleOrderMetadata metadata, SaveAction saveAction) {
             super(resolveOwnerWindow(owner), "Tạo đơn bán hàng", ModalityType.APPLICATION_MODAL);
+            this.saveAction = saveAction;
 
             setLayout(new BorderLayout());
 
@@ -669,10 +672,21 @@ public class SaleOrderPanel extends JPanel {
             }
 
             // Tạo đối tượng CreateOrderRequest.
-            result = new CreateOrderRequest(
+            CreateOrderRequest request = new CreateOrderRequest(
                     cust.id(), staff.id(), promoId, pm, cart, txtNote.getText().trim()
             );
-            dispose(); // Đóng dialog.
+            try {
+                // Save lỗi thì không đóng để người dùng chỉnh sửa ngay trên form.
+                saveAction.save(request);
+                result = request;
+                dispose();
+            } catch (Exception ex) {
+                result = null;
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                        ex.getMessage(),
+                        "Lỗi tạo đơn",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         /**

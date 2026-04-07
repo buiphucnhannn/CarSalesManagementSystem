@@ -45,6 +45,11 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class StaffManagementPanel extends JPanel {
 
+    @FunctionalInterface
+    private interface SaveAction<T> {
+        void save(T request) throws Exception;
+    }
+
     /** Định dạng ngày tháng để hiển thị trong giao diện. */
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -313,23 +318,16 @@ public class StaffManagementPanel extends JPanel {
         /** Mở dialog để thêm hoặc sửa nhân viên. */
         private void showEditor(StaffItem existing) {
             reloadMetadata();
+            SaveAction<StaffCommandRequest> saveAction = existing == null
+                    ? controller::createStaff
+                    : controller::updateStaff;
             StaffEditorDialog dialog = new StaffEditorDialog(
-                    getAppDialogWindow(), metadata, existing);
+                    getAppDialogWindow(), metadata, existing, saveAction);
             dialog.setVisible(true);
 
             dialog.getResult().ifPresent(request -> {
-                try {
-                    if (existing == null) {
-                        controller.createStaff(request);
-                        showInfo("Thêm nhân viên thành công.");
-                    } else {
-                        controller.updateStaff(request);
-                        showInfo("Cập nhật nhân viên thành công.");
-                    }
-                    refreshData();
-                } catch (Exception ex) {
-                    showError(ex.getMessage());
-                }
+                showInfo(existing == null ? "Thêm nhân viên thành công." : "Cập nhật nhân viên thành công.");
+                refreshData();
             });
         }
 
@@ -514,31 +512,29 @@ public class StaffManagementPanel extends JPanel {
         /** Mở dialog để tạo hoặc sửa tài khoản. */
         private void showAccountEditor(AccountItem existing) {
             // Lấy danh sách nhân viên chưa có tài khoản để điền vào combobox khi tạo mới.
+            SaveAction<AccountCommandRequest> saveAction = existing == null
+                    ? controller::createAccount
+                    : controller::updateAccount;
             AccountEditorDialog dialog = new AccountEditorDialog(
                     getAppDialogWindow(), existing,
-                    controller.loadStaffsPendingAccount());
+                    controller.loadStaffsPendingAccount(),
+                    saveAction);
             dialog.setVisible(true);
 
             dialog.getResult().ifPresent(request -> {
-                try {
-                    if (existing == null) {
-                        controller.createAccount(request);
-                        dialog.getCreateSummary().ifPresentOrElse(summary ->
-                                        showCenteredInfoDialog("<html><div style='width:430px; text-align:left;'>"
-                                                + "Đã tạo tài khoản thành công cho nhân viên <b>"
-                                                + summary.role() + " - " + summary.fullName() + "</b>.<br/><br/>"
-                                                + "<b>Username:</b> " + summary.username() + "<br/>"
-                                                + "<b>Mật khẩu:</b> " + summary.rawPassword()
-                                                + "</div></html>"),
-                                () -> showCenteredInfoDialog("Tạo tài khoản thành công."));
-                    } else {
-                        controller.updateAccount(request);
-                        showInfo("Cập nhật tài khoản thành công.");
-                    }
-                    refreshData();
-                } catch (Exception ex) {
-                    showError(ex.getMessage());
+                if (existing == null) {
+                    dialog.getCreateSummary().ifPresentOrElse(summary ->
+                                    showCenteredInfoDialog("<html><div style='width:430px; text-align:left;'>"
+                                            + "Đã tạo tài khoản thành công cho nhân viên <b>"
+                                            + summary.role() + " - " + summary.fullName() + "</b>.<br/><br/>"
+                                            + "<b>Username:</b> " + summary.username() + "<br/>"
+                                            + "<b>Mật khẩu:</b> " + summary.rawPassword()
+                                            + "</div></html>"),
+                            () -> showCenteredInfoDialog("Tạo tài khoản thành công."));
+                } else {
+                    showInfo("Cập nhật tài khoản thành công.");
                 }
+                refreshData();
             });
         }
 
@@ -681,12 +677,17 @@ public class StaffManagementPanel extends JPanel {
 
         private StaffCommandRequest result;
         private final Long editingId;
+        private final SaveAction<StaffCommandRequest> saveAction;
 
-        private StaffEditorDialog(Window owner, StaffManagementMetadata metadata, StaffItem existing) {
+        private StaffEditorDialog(Window owner,
+                                  StaffManagementMetadata metadata,
+                                  StaffItem existing,
+                                  SaveAction<StaffCommandRequest> saveAction) {
             super(owner,
                     existing == null ? "Thêm nhân viên" : "Sửa nhân viên",
                     ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
+            this.saveAction = saveAction;
 
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
@@ -708,7 +709,8 @@ public class StaffManagementPanel extends JPanel {
             // Điền dữ liệu cũ nếu đang ở chế độ sửa.
             if (existing != null) {
                 codeField.setText(existing.staffCode());
-                codeField.setEditable(true);
+                // Mã NV là định danh do hệ thống cấp, không cho chỉnh sửa sau khi tạo.
+                codeField.setEditable(false);
                 fullNameField.setText(existing.fullName());
                 emailField.setText(existing.email());
                 phoneField.setText(existing.phone());
@@ -769,7 +771,17 @@ public class StaffManagementPanel extends JPanel {
                     branch.id(),
                     (Status) statusCombo.getSelectedItem()
             );
-            dispose();
+            try {
+                // Save lỗi thì giữ dialog mở để người dùng sửa lại dữ liệu.
+                saveAction.save(result);
+                dispose();
+            } catch (Exception ex) {
+                result = null;
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                        ex.getMessage(),
+                        "Lỗi nhập liệu",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         /** Chọn một chi nhánh trong combobox dựa trên branchId. */
@@ -812,12 +824,17 @@ public class StaffManagementPanel extends JPanel {
         private CreateAccountSummary createSummary;
         private final Long editingId;
         private final char defaultEchoChar;
+        private final SaveAction<AccountCommandRequest> saveAction;
 
-        private AccountEditorDialog(Window owner, AccountItem existing, List<StaffItem> allStaffs) {
+        private AccountEditorDialog(Window owner,
+                                    AccountItem existing,
+                                    List<StaffItem> allStaffs,
+                                    SaveAction<AccountCommandRequest> saveAction) {
             super(owner,
                     existing == null ? "Tạo tài khoản" : "Sửa tài khoản",
                     ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
+            this.saveAction = saveAction;
 
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
@@ -928,6 +945,7 @@ public class StaffManagementPanel extends JPanel {
             }
 
             Long staffId;
+            CreateAccountSummary draftSummary;
             if (existing == null) {
                 // Lấy ID nhân viên từ combobox.
                 StaffItem selectedStaff = (StaffItem) staffCombo.getSelectedItem();
@@ -938,7 +956,7 @@ public class StaffManagementPanel extends JPanel {
                     return;
                 }
                 staffId = selectedStaff.id();
-                createSummary = new CreateAccountSummary(
+                draftSummary = new CreateAccountSummary(
                         selectedStaff.role().name(),
                         selectedStaff.fullName(),
                         usernameField.getText().trim().toLowerCase(),
@@ -946,17 +964,29 @@ public class StaffManagementPanel extends JPanel {
                 );
             } else {
                 staffId = existing.staffId();
-                createSummary = null;
+                draftSummary = null;
             }
 
-            result = new AccountCommandRequest(
+            AccountCommandRequest request = new AccountCommandRequest(
                     editingId,
                     staffId,
                     usernameField.getText().trim().toLowerCase(),
                     rawPassword.isEmpty() ? null : rawPassword,
                     (Status) statusCombo.getSelectedItem()
             );
-            dispose();
+            try {
+                saveAction.save(request);
+                result = request;
+                createSummary = draftSummary;
+                dispose();
+            } catch (Exception ex) {
+                result = null;
+                createSummary = null;
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                        ex.getMessage(),
+                        "Lỗi nhập liệu",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         private Optional<AccountCommandRequest> getResult() {

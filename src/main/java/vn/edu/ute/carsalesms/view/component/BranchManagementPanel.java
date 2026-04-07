@@ -53,6 +53,11 @@ import java.util.Optional;
  */
 public class BranchManagementPanel extends JPanel {
 
+    @FunctionalInterface
+    private interface SaveAction {
+        void save(BranchCommandRequest request) throws Exception;
+    }
+
     // Định dạng ngày và giờ được sử dụng trong toàn bộ panel.
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -336,25 +341,17 @@ public class BranchManagementPanel extends JPanel {
          * @param existing Chi nhánh hiện tại để sửa, hoặc null để thêm mới.
          */
         private void showEditor(BranchItem existing) {
+            SaveAction saveAction = existing == null ? controller::createBranch : controller::updateBranch;
             BranchEditorDialog dialog = new BranchEditorDialog(
                     getDialogWindow(),
-                    existing);
+                    existing,
+                    saveAction);
             dialog.setVisible(true);
 
-            // Xử lý kết quả sau khi dialog đóng
+            // Controller đã xử lý bên trong dialog; chỉ cần cập nhật UI khi đã lưu thành công.
             dialog.getResult().ifPresent(request -> {
-                try {
-                    if (existing == null) {
-                        controller.createBranch(request);
-                        showInfo("Thêm chi nhánh thành công.");
-                    } else {
-                        controller.updateBranch(request);
-                        showInfo("Cập nhật chi nhánh thành công.");
-                    }
-                    refreshData(); // Tải lại dữ liệu để hiển thị thay đổi
-                } catch (Exception ex) {
-                    showError(ex.getMessage());
-                }
+                showInfo(existing == null ? "Thêm chi nhánh thành công." : "Cập nhật chi nhánh thành công.");
+                refreshData(); // Tải lại dữ liệu để hiển thị thay đổi
             });
         }
 
@@ -613,10 +610,12 @@ public class BranchManagementPanel extends JPanel {
 
         private final Long editingId; // ID của chi nhánh đang sửa, null nếu là thêm mới
         private BranchCommandRequest result; // Kết quả trả về sau khi người dùng lưu
+        private final SaveAction saveAction;
 
-        private BranchEditorDialog(Window owner, BranchItem existing) {
+        private BranchEditorDialog(Window owner, BranchItem existing, SaveAction saveAction) {
             super(owner, existing == null ? "Thêm chi nhánh" : "Sửa chi nhánh", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
+            this.saveAction = saveAction;
 
             setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
             setResizable(false);
@@ -705,7 +704,17 @@ public class BranchManagementPanel extends JPanel {
                     emailField.getText().trim().isEmpty() ? null : emailField.getText().trim(),
                     (Status) statusCombo.getSelectedItem()
             );
-            dispose(); // Đóng dialog
+            try {
+                // Chỉ đóng dialog khi save thành công để người dùng có thể sửa nếu backend validate lỗi.
+                saveAction.save(result);
+                dispose();
+            } catch (Exception ex) {
+                result = null;
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                        ex.getMessage(),
+                        "Lỗi nhập liệu",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         /**

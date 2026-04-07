@@ -50,6 +50,11 @@ import vn.edu.ute.carsalesms.view.theme.UiPalette;
  */
 public class CarManagementPanel extends JPanel {
 
+    @FunctionalInterface
+    private interface SaveAction<T> {
+        void save(T request) throws Exception;
+    }
+
     private final CarManagementController carController;
     private final boolean allowDeactivate; // Cờ cho phép thực hiện hành động ngừng kinh doanh/hoạt động
     private final CarTabPanel carTabPanel;
@@ -355,19 +360,14 @@ public class CarManagementPanel extends JPanel {
          */
         private void showEditor(CarManagementItem existing) {
             reloadMetadata(); // Tải lại metadata mới nhất trước khi mở editor
-            CarEditorDialog dialog = new CarEditorDialog(getDialogWindow(), metadata, existing);
+            SaveAction<CarCommandRequest> saveAction = existing == null
+                    ? carController::createCar
+                    : carController::updateCar;
+            CarEditorDialog dialog = new CarEditorDialog(getDialogWindow(), metadata, existing, saveAction);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
-                try {
-                    if (existing == null) {
-                        carController.createCar(request);
-                    } else {
-                        carController.updateCar(request);
-                    }
-                    refreshData();
-                } catch (Exception ex) {
-                    showError(ex.getMessage());
-                }
+                // Save đã thực hiện bên trong dialog; chỉ refresh khi save thành công.
+                refreshData();
             });
         }
 
@@ -497,19 +497,13 @@ public class CarManagementPanel extends JPanel {
          * @param existing Hãng xe hiện tại để sửa, hoặc null để thêm mới.
          */
         private void showEditor(BrandManagementItem existing) {
-            BrandEditorDialog dialog = new BrandEditorDialog(getDialogWindow(), existing);
+            SaveAction<BrandCommandRequest> saveAction = existing == null
+                    ? carController::createBrand
+                    : carController::updateBrand;
+            BrandEditorDialog dialog = new BrandEditorDialog(getDialogWindow(), existing, saveAction);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
-                try {
-                    if (existing == null) {
-                        carController.createBrand(request);
-                    } else {
-                        carController.updateBrand(request);
-                    }
-                    refreshData();
-                } catch (Exception ex) {
-                    showError(ex.getMessage());
-                }
+                refreshData();
             });
         }
 
@@ -646,19 +640,13 @@ public class CarManagementPanel extends JPanel {
          * @param existing Loại xe hiện tại để sửa, hoặc null để thêm mới.
          */
         private void showEditor(CategoryManagementItem existing) {
-            CategoryEditorDialog dialog = new CategoryEditorDialog(getDialogWindow(), existing);
+            SaveAction<CategoryCommandRequest> saveAction = existing == null
+                    ? carController::createCategory
+                    : carController::updateCategory;
+            CategoryEditorDialog dialog = new CategoryEditorDialog(getDialogWindow(), existing, saveAction);
             dialog.setVisible(true);
             dialog.getResult().ifPresent(request -> {
-                try {
-                    if (existing == null) {
-                        carController.createCategory(request);
-                    } else {
-                        carController.updateCategory(request);
-                    }
-                    refreshData();
-                } catch (Exception ex) {
-                    showError(ex.getMessage());
-                }
+                refreshData();
             });
         }
 
@@ -704,10 +692,15 @@ public class CarManagementPanel extends JPanel {
 
         private CarCommandRequest result;
         private final Long editingId;
+        private final SaveAction<CarCommandRequest> saveAction;
 
-        private CarEditorDialog(java.awt.Window owner, CarManagementMetadata metadata, CarManagementItem existing) {
+        private CarEditorDialog(java.awt.Window owner,
+                                CarManagementMetadata metadata,
+                                CarManagementItem existing,
+                                SaveAction<CarCommandRequest> saveAction) {
             super(owner, existing == null ? "Thêm xe" : "Sửa xe", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
+            this.saveAction = saveAction;
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
 
@@ -799,8 +792,11 @@ public class CarManagementPanel extends JPanel {
                         Integer.parseInt(availableQuantityField.getText().trim()),
                         (Status) statusCombo.getSelectedItem()
                 );
-                dispose(); // Đóng dialog
+                // Chỉ đóng dialog khi lưu thành công.
+                saveAction.save(result);
+                dispose();
             } catch (Exception ex) {
+                result = null;
                 JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.", "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
             }
         }
@@ -841,10 +837,14 @@ public class CarManagementPanel extends JPanel {
 
         private BrandCommandRequest result;
         private final Long editingId;
+        private final SaveAction<BrandCommandRequest> saveAction;
 
-        private BrandEditorDialog(java.awt.Window owner, BrandManagementItem existing) {
+        private BrandEditorDialog(java.awt.Window owner,
+                                  BrandManagementItem existing,
+                                  SaveAction<BrandCommandRequest> saveAction) {
             super(owner, existing == null ? "Thêm hãng xe" : "Sửa hãng xe", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
+            this.saveAction = saveAction;
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
 
@@ -895,7 +895,16 @@ public class CarManagementPanel extends JPanel {
                     countryField.getText(),
                     (Status) statusCombo.getSelectedItem()
             );
-            dispose();
+            try {
+                saveAction.save(result);
+                dispose();
+            } catch (Exception ex) {
+                result = null;
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                        ex.getMessage(),
+                        "Lỗi nhập liệu",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         private Optional<BrandCommandRequest> getResult() {
@@ -914,10 +923,14 @@ public class CarManagementPanel extends JPanel {
 
         private CategoryCommandRequest result;
         private final Long editingId;
+        private final SaveAction<CategoryCommandRequest> saveAction;
 
-        private CategoryEditorDialog(java.awt.Window owner, CategoryManagementItem existing) {
+        private CategoryEditorDialog(java.awt.Window owner,
+                                     CategoryManagementItem existing,
+                                     SaveAction<CategoryCommandRequest> saveAction) {
             super(owner, existing == null ? "Thêm loại xe" : "Sửa loại xe", ModalityType.APPLICATION_MODAL);
             this.editingId = existing == null ? null : existing.id();
+            this.saveAction = saveAction;
             setResizable(false);
             setLayout(new BorderLayout(0, 8));
 
@@ -964,7 +977,16 @@ public class CarManagementPanel extends JPanel {
                     nameField.getText(),
                     (Status) statusCombo.getSelectedItem()
             );
-            dispose();
+            try {
+                saveAction.save(result);
+                dispose();
+            } catch (Exception ex) {
+                result = null;
+                JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                        ex.getMessage(),
+                        "Lỗi nhập liệu",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         private Optional<CategoryCommandRequest> getResult() {

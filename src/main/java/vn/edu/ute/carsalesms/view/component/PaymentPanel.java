@@ -32,6 +32,11 @@ import java.util.Optional;
  */
 public class PaymentPanel extends JPanel {
 
+    @FunctionalInterface
+    private interface SaveAction {
+        void save(PaymentRequest request) throws Exception;
+    }
+
     // Định dạng ngày và giờ để hiển thị trong bảng.
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     
@@ -254,23 +259,19 @@ public class PaymentPanel extends JPanel {
         BigDecimal totalPaid = paymentRows.stream().map(PaymentItem::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal amountDues = order.finalAmount().subtract(totalPaid);
 
-        PaymentDialog dialog = new PaymentDialog(DialogUiUtil.appDialogParent(this), order, amountDues);
+        SaveAction saveAction = paymentController::addPayment;
+        PaymentDialog dialog = new PaymentDialog(DialogUiUtil.appDialogParent(this), order, amountDues, saveAction);
         dialog.setVisible(true); // Hiển thị dialog.
 
         dialog.getResult().ifPresent(req -> {
-            try {
-                paymentController.addPayment(req); // Thêm thanh toán qua controller.
-                showInfo(); // Hiển thị thông báo thành công.
-                refreshOrders(); // Làm mới danh sách đơn hàng để cập nhật trạng thái.
-                // Chọn lại đơn hàng vừa thao tác để hiển thị lịch sử thanh toán của nó.
-                for (int i=0; i<orderTable.getRowCount(); i++) {
-                    if (orderTable.getValueAt(i, 1).equals(order.orderCode())) {
-                        orderTable.setRowSelectionInterval(i, i);
-                        break;
-                    }
+            showInfo(); // Hiển thị thông báo thành công.
+            refreshOrders(); // Làm mới danh sách đơn hàng để cập nhật trạng thái.
+            // Chọn lại đơn hàng vừa thao tác để hiển thị lịch sử thanh toán của nó.
+            for (int i=0; i<orderTable.getRowCount(); i++) {
+                if (orderTable.getValueAt(i, 1).equals(order.orderCode())) {
+                    orderTable.setRowSelectionInterval(i, i);
+                    break;
                 }
-            } catch (Exception ex) {
-                showError("Lỗi: " + ex.getMessage()); // Hiển thị lỗi.
             }
         });
     }
@@ -372,6 +373,7 @@ public class PaymentPanel extends JPanel {
         private final JLabel lblMonths = new JLabel("Số kỳ trả góp (Tháng)"); // Label cho spinner số kỳ trả góp.
 
         private PaymentRequest result; // Đối tượng PaymentRequest được tạo sau khi người dùng lưu.
+        private final SaveAction saveAction;
 
         /**
          * Constructor khởi tạo PaymentDialog.
@@ -379,8 +381,9 @@ public class PaymentPanel extends JPanel {
          * @param order Đơn hàng liên quan đến thanh toán.
          * @param amountDues Số tiền còn thiếu cần thanh toán.
          */
-        private PaymentDialog(Component owner, SaleOrderItem order, BigDecimal amountDues) {
+        private PaymentDialog(Component owner, SaleOrderItem order, BigDecimal amountDues, SaveAction saveAction) {
             super(resolveOwnerWindow(owner), "Thanh toán Đơn " + order.orderCode(), ModalityType.APPLICATION_MODAL);
+            this.saveAction = saveAction;
             setLayout(new BorderLayout(8, 8));
 
             JPanel info = new JPanel(new GridLayout(2, 1));
@@ -428,7 +431,7 @@ public class PaymentPanel extends JPanel {
                     // Lấy số tháng trả góp nếu phương thức là INSTALLMENT, ngược lại là null.
                     Integer months = method == PaymentMethod.INSTALLMENT ? (Integer) spinMonths.getValue() : null;
 
-                    result = new PaymentRequest(
+                    PaymentRequest request = new PaymentRequest(
                             order.id(),
                             amt,
                             method,
@@ -436,9 +439,16 @@ public class PaymentPanel extends JPanel {
                             txtNote.getText(),
                             months
                     );
-                    dispose(); // Đóng dialog sau khi tạo request thành công.
+                    // Chỉ đóng khi service xử lý thành công.
+                    saveAction.save(request);
+                    result = request;
+                    dispose();
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Số tiền không hợp lệ.", "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
+                    result = null;
+                    JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this),
+                            "Dữ liệu không hợp lệ: " + ex.getMessage(),
+                            "Lỗi nhập liệu",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             });
 

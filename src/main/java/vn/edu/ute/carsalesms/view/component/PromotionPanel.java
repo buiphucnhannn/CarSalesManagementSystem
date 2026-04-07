@@ -27,6 +27,11 @@ import java.util.Optional;
  */
 public class PromotionPanel extends JPanel {
 
+    @FunctionalInterface
+    private interface SaveAction {
+        void save(PromotionRequest request) throws Exception;
+    }
+
     // Định dạng ngày tháng được sử dụng để hiển thị và nhập liệu.
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private final PromotionController promotionController; // Controller để xử lý các thao tác liên quan đến khuyến mãi.
@@ -187,22 +192,17 @@ public class PromotionPanel extends JPanel {
      * @param editItem Đối tượng PromotionItem để chỉnh sửa, hoặc null nếu thêm mới.
      */
     private void showDialog(PromotionItem editItem) {
-        PromotionDialog dialog = new PromotionDialog(getDialogWindow(), editItem);
+        SaveAction saveAction = editItem == null
+                ? promotionController::createPromotion
+                : req -> promotionController.updatePromotion(editItem.id(), req);
+        PromotionDialog dialog = new PromotionDialog(getDialogWindow(), editItem, saveAction);
         dialog.setVisible(true); // Hiển thị dialog.
 
         dialog.getResult().ifPresent(req -> {
-            try {
-                if (editItem == null) {
-                    promotionController.createPromotion(req); // Tạo mới khuyến mãi.
-                    showInfo("Thêm mới khuyến mãi [" + req.promotionCode() + "] thành công.");
-                } else {
-                    promotionController.updatePromotion(editItem.id(), req); // Cập nhật khuyến mãi.
-                    showInfo("Cập nhật thành công.");
-                }
-                refreshData(); // Tải lại dữ liệu để cập nhật bảng.
-            } catch (Exception ex) {
-                showError("Lỗi: " + ex.getMessage()); // Hiển thị lỗi.
-            }
+            showInfo(editItem == null
+                    ? "Thêm mới khuyến mãi [" + req.promotionCode() + "] thành công."
+                    : "Cập nhật thành công.");
+            refreshData(); // Tải lại dữ liệu để cập nhật bảng.
         });
     }
 
@@ -318,7 +318,7 @@ public class PromotionPanel extends JPanel {
          * @param owner Cửa sổ cha của dialog.
          * @param item Đối tượng PromotionItem để chỉnh sửa, hoặc null nếu thêm mới.
          */
-        public PromotionDialog(Window owner, PromotionItem item) {
+        public PromotionDialog(Window owner, PromotionItem item, SaveAction saveAction) {
             super(owner, item == null ? "Thêm Khuyến Mãi (F13)" : "Chỉnh sửa: " + item.promotionCode(), ModalityType.APPLICATION_MODAL);
 
             JPanel form = new JPanel(new GridLayout(8, 2, 10, 10)); // Sử dụng GridLayout cho form nhập liệu.
@@ -336,7 +336,7 @@ public class PromotionPanel extends JPanel {
             // Nếu là chỉnh sửa, điền dữ liệu hiện có vào các trường.
             if (item != null) {
                 txtCode.setText(item.promotionCode());
-                txtCode.setEditable(false); // Không cho phép sửa mã khuyến mãi.
+                txtCode.setEditable(true); // Cho phép sửa mã khuyến mãi theo yêu cầu nghiệp vụ.
                 txtName.setText(item.promotionName());
                 cbType.setSelectedItem(item.discountType());
                 txtValue.setText(item.discountValue().toPlainString());
@@ -380,10 +380,13 @@ public class PromotionPanel extends JPanel {
                             txtDesc.getText().trim(),
                             (Status) cbStatus.getSelectedItem()
                     );
-                    dispose(); // Đóng dialog.
+                    // Chỉ đóng dialog sau khi lưu thành công ở tầng nghiệp vụ.
+                    saveAction.save(result);
+                    dispose();
                 } catch (DateTimeParseException dte) {
                     JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Định dạng ngày phải là dd/MM/yyyy", "Lỗi ngày tháng", JOptionPane.ERROR_MESSAGE);
                 } catch (Exception ex) {
+                    result = null;
                     JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Dữ liệu nhập sai: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
             });

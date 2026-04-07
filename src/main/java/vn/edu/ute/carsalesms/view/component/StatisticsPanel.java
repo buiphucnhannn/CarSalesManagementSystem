@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Lớp StatisticsPanel định nghĩa giao diện người dùng cho trang tổng quan thống kê.
@@ -475,18 +476,220 @@ public class StatisticsPanel extends JPanel {
      * Lớp nội bộ để vẽ biểu đồ đường thể hiện xu hướng.
      */
     private static final class LineTrendChartPanel extends JPanel {
-        // ... (code bên trong không thay đổi, chỉ cần hiểu mục đích)
-        // Lớp này chịu trách nhiệm vẽ biểu đồ đường dựa trên dữ liệu được cung cấp,
-        // bao gồm các đường nối, điểm dữ liệu, chú thích, và xử lý tooltip khi di chuột.
+        private static final int PAD_LEFT = 52;
+        private static final int PAD_TOP = 16;
+        private static final int PAD_RIGHT = 16;
+        private static final int PAD_BOTTOM = 34;
+
+        private final NumberFormat moneyFmt = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"));
+        private List<StatisticsTrendPoint> rows = List.of();
+        private final List<Point> screenPoints = new ArrayList<>();
+
+        private LineTrendChartPanel() {
+            setOpaque(true);
+            setBackground(Color.WHITE);
+            setPreferredSize(new Dimension(420, 260));
+            setBorder(BorderFactory.createLineBorder(UiPalette.BORDER_SOFT));
+
+            addMouseMotionListener(new MouseAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    setToolTipText(buildTooltipAt(e.getPoint()));
+                }
+            });
+        }
+
+        private void setData(List<StatisticsTrendPoint> rows) {
+            this.rows = (rows == null ? List.<StatisticsTrendPoint>of() : rows)
+                    .stream()
+                    .sorted(Comparator.comparing(StatisticsTrendPoint::date))
+                    .toList();
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int width = getWidth();
+            int height = getHeight();
+            int chartW = Math.max(1, width - PAD_LEFT - PAD_RIGHT);
+            int chartH = Math.max(1, height - PAD_TOP - PAD_BOTTOM);
+
+            g2.setColor(UiPalette.BORDER_SOFT);
+            g2.drawRect(PAD_LEFT, PAD_TOP, chartW, chartH);
+
+            if (rows.isEmpty()) {
+                g2.setColor(UiPalette.TEXT_MUTED);
+                g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                g2.drawString("Không có dữ liệu", PAD_LEFT + 12, PAD_TOP + 22);
+                g2.dispose();
+                return;
+            }
+
+            BigDecimal maxRevenue = rows.stream()
+                    .map(StatisticsTrendPoint::revenue)
+                    .filter(Objects::nonNull)
+                    .max(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ONE);
+            if (maxRevenue.compareTo(BigDecimal.ZERO) <= 0) {
+                maxRevenue = BigDecimal.ONE;
+            }
+
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            g2.setColor(UiPalette.TEXT_MUTED);
+            for (int i = 0; i <= 4; i++) {
+                int y = PAD_TOP + (chartH * i / 4);
+                g2.setColor(UiPalette.BORDER_LIGHTER);
+                g2.drawLine(PAD_LEFT, y, PAD_LEFT + chartW, y);
+
+                BigDecimal labelValue = maxRevenue.multiply(BigDecimal.valueOf(4L - i))
+                        .divide(BigDecimal.valueOf(4L), java.math.RoundingMode.HALF_UP);
+                String label = moneyFmt.format(labelValue) + " VND";
+                g2.setColor(UiPalette.TEXT_MUTED);
+                g2.drawString(label, 6, y + 4);
+            }
+
+            int size = rows.size();
+            screenPoints.clear();
+            g2.setStroke(new BasicStroke(2f));
+            g2.setColor(UiPalette.PRIMARY);
+            for (int i = 0; i < size; i++) {
+                StatisticsTrendPoint p = rows.get(i);
+                BigDecimal revenue = p.revenue() == null ? BigDecimal.ZERO : p.revenue();
+                int x = PAD_LEFT + (size == 1 ? chartW / 2 : (chartW * i / (size - 1)));
+                int y = PAD_TOP + chartH - revenue.multiply(BigDecimal.valueOf(chartH)).divide(maxRevenue, java.math.RoundingMode.HALF_UP).intValue();
+                screenPoints.add(new Point(x, y));
+
+                if (i > 0) {
+                    Point prev = screenPoints.get(i - 1);
+                    g2.drawLine(prev.x, prev.y, x, y);
+                }
+            }
+
+            g2.setColor(UiPalette.SECONDARY);
+            for (Point pt : screenPoints) {
+                g2.fillOval(pt.x - 4, pt.y - 4, 8, 8);
+            }
+
+            g2.setColor(UiPalette.TEXT_MUTED);
+            g2.drawString(rows.get(0).date().format(DATE_FMT), PAD_LEFT, height - 8);
+            if (rows.size() > 1) {
+                String endDate = rows.get(rows.size() - 1).date().format(DATE_FMT);
+                int textW = g2.getFontMetrics().stringWidth(endDate);
+                g2.drawString(endDate, PAD_LEFT + chartW - textW, height - 8);
+            }
+
+            g2.dispose();
+        }
+
+        private String buildTooltipAt(Point mouse) {
+            int idx = -1;
+            int minDist = Integer.MAX_VALUE;
+            for (int i = 0; i < screenPoints.size(); i++) {
+                Point pt = screenPoints.get(i);
+                int dx = pt.x - mouse.x;
+                int dy = pt.y - mouse.y;
+                int dist = dx * dx + dy * dy;
+                if (dist < minDist) {
+                    minDist = dist;
+                    idx = i;
+                }
+            }
+
+            if (idx < 0 || minDist > 100) {
+                return null;
+            }
+
+            StatisticsTrendPoint p = rows.get(idx);
+            BigDecimal revenue = p.revenue() == null ? BigDecimal.ZERO : p.revenue();
+            return String.format("%s | %s VND | %d đơn", p.date().format(DATE_FMT), moneyFmt.format(revenue), p.orderCount());
+        }
     }
 
     /**
      * Lớp nội bộ để vẽ biểu đồ cột ngang thể hiện cơ cấu.
      */
     private static final class BarBreakdownChartPanel extends JPanel {
-        // ... (code bên trong không thay đổi, chỉ cần hiểu mục đích)
-        // Lớp này chịu trách nhiệm vẽ các thanh ngang để so sánh tỷ lệ
-        // của các thành phần trong một tổng thể (ví dụ: cơ cấu trạng thái đơn hàng).
-        // Nó tự động tính toán tỷ lệ phần trăm và hiển thị các nhãn tương ứng.
+        private final NumberFormat moneyFmt = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"));
+        private final String title;
+        private List<StatisticsBreakdownItem> rows = List.of();
+
+
+        private BarBreakdownChartPanel(String title) {
+            this.title = title == null ? "" : title;
+            setOpaque(true);
+            setBackground(Color.WHITE);
+            setPreferredSize(new Dimension(380, 220));
+            setBorder(BorderFactory.createLineBorder(UiPalette.BORDER_SOFT));
+        }
+
+        private void setData(List<StatisticsBreakdownItem> rows) {
+            this.rows = (rows == null ? List.<StatisticsBreakdownItem>of() : rows)
+                    .stream()
+                    .sorted(Comparator.comparingLong(StatisticsBreakdownItem::count).reversed())
+                    .toList();
+
+            int estimatedHeight = Math.max(220, 28 + this.rows.size() * 34);
+            setPreferredSize(new Dimension(getPreferredSize().width, estimatedHeight));
+            revalidate();
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int y = 16;
+            if (!title.isBlank()) {
+                g2.setColor(UiPalette.TEXT_SECONDARY);
+                g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                g2.drawString(title, 12, y);
+                y += 10;
+            }
+
+            if (rows.isEmpty()) {
+                g2.setColor(UiPalette.TEXT_MUTED);
+                g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                g2.drawString("Không có dữ liệu", 12, y + 20);
+                g2.dispose();
+                return;
+            }
+
+            long maxCount = rows.stream().mapToLong(StatisticsBreakdownItem::count).max().orElse(1L);
+            long totalCount = rows.stream().mapToLong(StatisticsBreakdownItem::count).sum();
+            if (maxCount <= 0) {
+                maxCount = 1L;
+            }
+
+            int labelX = 12;
+            int barX = 140;
+            int infoX = getWidth() - 190;
+            int barMaxW = Math.max(60, infoX - barX - 12);
+
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            for (StatisticsBreakdownItem row : rows) {
+                g2.setColor(UiPalette.TEXT_PRIMARY);
+                g2.drawString(row.label(), labelX, y + 14);
+
+                int barW = (int) Math.round((double) row.count() * barMaxW / maxCount);
+                g2.setColor(UiPalette.PRIMARY_SOFT);
+                g2.fillRoundRect(barX, y, barMaxW, 18, 8, 8);
+                g2.setColor(UiPalette.PRIMARY);
+                g2.fillRoundRect(barX, y, Math.max(2, barW), 18, 8, 8);
+
+                double pct = totalCount == 0 ? 0d : (double) row.count() * 100d / totalCount;
+                String info = String.format("%d đơn (%.1f%%) | %s VND", row.count(), pct, moneyFmt.format(row.amount() == null ? BigDecimal.ZERO : row.amount()));
+                g2.setColor(UiPalette.TEXT_SECONDARY);
+                g2.drawString(info, infoX, y + 14);
+                y += 34;
+            }
+
+            g2.dispose();
+        }
     }
 }

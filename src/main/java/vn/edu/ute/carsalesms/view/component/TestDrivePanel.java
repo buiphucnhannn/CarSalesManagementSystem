@@ -25,6 +25,11 @@ import java.util.Optional;
  */
 public class TestDrivePanel extends JPanel {
 
+    @FunctionalInterface
+    private interface SaveAction {
+        void save(TestDriveRequest request) throws Exception;
+    }
+
     // Định dạng ngày giờ cho việc hiển thị và nhập liệu.
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     
@@ -191,19 +196,14 @@ public class TestDrivePanel extends JPanel {
     private void showBookDialog() {
         // Lấy dữ liệu cần thiết (danh sách khách hàng, xe, nhân viên) để hiển thị trong dialog.
         TestDriveBookingMetadata metadata = testDriveService.getBookingMetadata();
-        TestDriveDialog dialog = new TestDriveDialog(getDialogWindow(), metadata);
+        SaveAction saveAction = testDriveService::bookTestDrive;
+        TestDriveDialog dialog = new TestDriveDialog(getDialogWindow(), metadata, saveAction);
         dialog.setVisible(true);
 
-        // Xử lý kết quả sau khi dialog đóng.
+        // Save đã làm ngay trong dialog; ở đây chỉ cập nhật lại UI khi thành công.
         dialog.getResult().ifPresent(req -> {
-            try {
-                // Gọi service để đặt lịch.
-                testDriveService.bookTestDrive(req);
-                showInfo("Đã lên lịch lái thử thành công.");
-                refreshData(); // Tải lại dữ liệu.
-            } catch (Exception ex) {
-                showError("Lỗi đặt lịch: " + ex.getMessage());
-            }
+            showInfo("Đã lên lịch lái thử thành công.");
+            refreshData(); // Tải lại dữ liệu.
         });
     }
 
@@ -349,14 +349,16 @@ public class TestDrivePanel extends JPanel {
 
         // Kết quả trả về từ dialog.
         private TestDriveRequest result;
+        private final SaveAction saveAction;
 
         /**
          * Constructor của TestDriveDialog.
          * @param owner cửa sổ cha.
          * @param metadata dữ liệu cần thiết để khởi tạo các combobox.
          */
-        public TestDriveDialog(Window owner, TestDriveBookingMetadata metadata) {
+        public TestDriveDialog(Window owner, TestDriveBookingMetadata metadata, SaveAction saveAction) {
             super(owner, "Đăng Ký Hệ Thống Lái Mẫu Xe", ModalityType.APPLICATION_MODAL);
+            this.saveAction = saveAction;
 
             // Nạp dữ liệu vào các combobox.
             metadata.customers().forEach(c -> cbCustomer.addItem(new CustomerComboItem(c.id(), c.displayName())));
@@ -395,12 +397,16 @@ public class TestDrivePanel extends JPanel {
                     // Chuyển đổi chuỗi thời gian sang đối tượng LocalDateTime.
                     LocalDateTime time = LocalDateTime.parse(txtTime.getText().trim(), DATE_FMT);
                     
-                    // Tạo đối tượng request và đóng dialog.
-                    result = new TestDriveRequest(cust.id, car.id, staff.id, time, txtDesc.getText());
+                    // Chỉ đóng dialog khi service chấp nhận request thành công.
+                    TestDriveRequest request = new TestDriveRequest(cust.id, car.id, staff.id, time, txtDesc.getText());
+                    this.saveAction.save(request);
+                    result = request;
                     dispose();
                 } catch (DateTimeParseException dte) {
+                    result = null;
                     JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Định dạng lịch báo không khớp chuẩn (VD: 30/04/2026 14:00)", "Cảnh Báo AI", JOptionPane.ERROR_MESSAGE);
                 } catch (Exception ex) {
+                    result = null;
                     JOptionPane.showMessageDialog(DialogUiUtil.appDialogParent(this), "Lỗi Input: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
             });
