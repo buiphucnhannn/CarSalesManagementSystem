@@ -373,14 +373,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý xe");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý xe",
+                "Theo dõi xe, hãng xe và loại xe; hỗ trợ thêm/sửa/ngừng kinh doanh và tra cứu nhanh."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new CarManagementPanel(carManagementController, false), BorderLayout.CENTER);
@@ -391,14 +387,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý Khách hàng");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Khách hàng",
+                "Lưu trữ hồ sơ khách hàng, cập nhật thông tin liên hệ và hỗ trợ tra cứu lịch sử giao dịch."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new CustomerManagementPanel(customerManagementController), BorderLayout.CENTER);
@@ -409,14 +401,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Phân hệ Bán hàng (Đơn bán)");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Phân hệ Bán hàng (Đơn bán)",
+                "Tạo đơn bán, theo dõi trạng thái đơn và quản lý chi tiết các xe trong từng đơn hàng."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new SaleOrderPanel(saleOrderController), BorderLayout.CENTER);
@@ -427,14 +415,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Lịch sử & Ghi nhận Thanh toán");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Lịch sử & Ghi nhận Thanh toán",
+                "Ghi nhận các lần thanh toán, theo dõi dư nợ và kiểm soát tiến độ thu tiền theo đơn bán."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new PaymentPanel(saleOrderController, paymentController), BorderLayout.CENTER);
@@ -445,14 +429,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý Hóa đơn");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Hóa đơn",
+                "Tra cứu hóa đơn đã phát hành và xuất file PDF phục vụ đối soát, lưu trữ."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new InvoicePanel(invoiceController), BorderLayout.CENTER);
@@ -463,14 +443,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Quản lý Trả góp");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Quản lý Trả góp",
+                "Theo dõi lịch trả góp, trạng thái từng kỳ và ghi nhận thanh toán cho hợp đồng trả góp."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new InstallmentPanel(installmentController, saleOrderController), BorderLayout.CENTER);
@@ -481,14 +457,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Đăng Ký Khách Lái Thử");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Đăng Ký Khách Lái Thử",
+                "Lập lịch lái thử, phân công nhân viên phụ trách và theo dõi tiến độ xác nhận lịch hẹn."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new vn.edu.ute.carsalesms.view.component.TestDrivePanel(testDriveService), BorderLayout.CENTER);
@@ -499,14 +471,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Hồ Sơ Bảo Hành Tự Động 3 Năm");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Hồ Sơ Bảo Hành Tự Động 3 Năm",
+                "Tra cứu và cập nhật hồ sơ bảo hành theo xe, theo đơn bán và theo thời gian hiệu lực."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new vn.edu.ute.carsalesms.view.component.WarrantyPanel(warrantyService), BorderLayout.CENTER);
@@ -521,14 +489,10 @@ public class StaffDashboardFrame extends JFrame {
         JPanel wrapper = new JPanel(new BorderLayout(0, 8));
         wrapper.setOpaque(false);
 
-        JPanel headerCard = createCard();
-        headerCard.setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("Thống kê");
-        title.setForeground(UiPalette.TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-
-        headerCard.add(title, BorderLayout.CENTER);
+        JPanel headerCard = createModuleHeaderCard(
+                "Thống kê",
+                "Báo cáo doanh thu theo thời gian, phân tích trạng thái đơn hàng, top xe bán chạy và hiệu quả chi nhánh."
+        );
 
         wrapper.add(headerCard, BorderLayout.NORTH);
         wrapper.add(new StatisticsPanel(statisticsController, currentStaffId), BorderLayout.CENTER);
@@ -554,6 +518,23 @@ public class StaffDashboardFrame extends JFrame {
         card.add(desc);
         wrapper.add(card, BorderLayout.NORTH);
         return wrapper;
+    }
+
+    private JPanel createModuleHeaderCard(String titleText, String descriptionText) {
+        JPanel card = createCard();
+        card.setLayout(new BorderLayout(0, 4));
+
+        JLabel title = new JLabel(titleText);
+        title.setForeground(UiPalette.TEXT_PRIMARY);
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+
+        JLabel desc = new JLabel(descriptionText);
+        desc.setForeground(UiPalette.TEXT_SECONDARY);
+        desc.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        card.add(title, BorderLayout.NORTH);
+        card.add(desc, BorderLayout.CENTER);
+        return card;
     }
 
     private JPanel createCard() {

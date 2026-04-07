@@ -8,6 +8,7 @@ import vn.edu.ute.carsalesms.model.dto.StatisticsKpiItem;
 import vn.edu.ute.carsalesms.model.dto.StatisticsTrendPoint;
 import vn.edu.ute.carsalesms.model.dto.TopCarStatisticsItem;
 import vn.edu.ute.carsalesms.service.StatisticsService;
+import vn.edu.ute.carsalesms.session.UserSessionContext;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,9 +24,11 @@ import java.util.stream.Stream;
 public class StatisticsServiceImpl implements StatisticsService {
 
     private final StatisticsDao statisticsDao;
+    private final UserSessionContext sessionContext;
 
-    public StatisticsServiceImpl(StatisticsDao statisticsDao) {
+    public StatisticsServiceImpl(StatisticsDao statisticsDao, UserSessionContext sessionContext) {
         this.statisticsDao = Objects.requireNonNull(statisticsDao, "statisticsDao is required");
+        this.sessionContext = Objects.requireNonNull(sessionContext, "sessionContext is required");
     }
 
     @Override
@@ -34,16 +37,17 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
-    public StatisticsDashboardData getStaffStatistics(Long staffId, LocalDate fromDate, LocalDate toDate) {
-        if (staffId == null) {
-            throw new IllegalArgumentException("Thiếu thông tin nhân viên để thống kê.");
+    public StatisticsDashboardData getStaffStatistics(LocalDate fromDate, LocalDate toDate) {
+        Long branchId = sessionContext.currentBranchId();
+        if (branchId == null) {
+            throw new IllegalStateException("Không xác định được chi nhánh của nhân viên hiện tại.");
         }
-        return loadStatistics(fromDate, toDate, staffId, false);
+        return loadStatistics(fromDate, toDate, branchId, false);
     }
 
     private StatisticsDashboardData loadStatistics(LocalDate fromDate,
                                                    LocalDate toDate,
-                                                   Long staffId,
+                                                   Long branchId,
                                                    boolean includeBranch) {
         LocalDate start = fromDate == null ? LocalDate.now().minusDays(29) : fromDate;
         LocalDate end = toDate == null ? LocalDate.now() : toDate;
@@ -54,9 +58,9 @@ public class StatisticsServiceImpl implements StatisticsService {
         LocalDateTime fromInclusive = start.atStartOfDay();
         LocalDateTime toExclusive = end.plusDays(1).atStartOfDay();
 
-        BigDecimal totalRevenue = defaultAmount(statisticsDao.sumRevenue(fromInclusive, toExclusive, staffId));
-        long totalOrders = statisticsDao.countOrders(fromInclusive, toExclusive, staffId);
-        long paidOrders = statisticsDao.countPaidOrders(fromInclusive, toExclusive, staffId);
+        BigDecimal totalRevenue = defaultAmount(statisticsDao.sumRevenue(fromInclusive, toExclusive, branchId));
+        long totalOrders = statisticsDao.countOrders(fromInclusive, toExclusive, branchId);
+        long paidOrders = statisticsDao.countPaidOrders(fromInclusive, toExclusive, branchId);
         BigDecimal avgOrderValue = totalOrders == 0
                 ? BigDecimal.ZERO
                 : totalRevenue.divide(BigDecimal.valueOf(totalOrders), 0, RoundingMode.HALF_UP);
@@ -64,11 +68,11 @@ public class StatisticsServiceImpl implements StatisticsService {
         StatisticsKpiItem kpi = new StatisticsKpiItem(totalRevenue, totalOrders, paidOrders, avgOrderValue);
 
         List<StatisticsTrendPoint> trend = buildTrend(start, end,
-                statisticsDao.findDailyRevenue(fromInclusive, toExclusive, staffId),
-                statisticsDao.findDailyOrders(fromInclusive, toExclusive, staffId));
+                statisticsDao.findDailyRevenue(fromInclusive, toExclusive, branchId),
+                statisticsDao.findDailyOrders(fromInclusive, toExclusive, branchId));
 
         List<StatisticsBreakdownItem> statusBreakdown = statisticsDao
-                .findOrderStatusBreakdown(fromInclusive, toExclusive, staffId)
+                .findOrderStatusBreakdown(fromInclusive, toExclusive, branchId)
                 .stream()
                 .map(r -> new StatisticsBreakdownItem(
                         String.valueOf(r[0]),
@@ -79,7 +83,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .toList();
 
         List<StatisticsBreakdownItem> paymentBreakdown = statisticsDao
-                .findPaymentMethodBreakdown(fromInclusive, toExclusive, staffId)
+                .findPaymentMethodBreakdown(fromInclusive, toExclusive, branchId)
                 .stream()
                 .map(r -> new StatisticsBreakdownItem(
                         String.valueOf(r[0]),
@@ -89,7 +93,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .sorted(Comparator.comparing(StatisticsBreakdownItem::amount).reversed())
                 .toList();
 
-        List<TopCarStatisticsItem> topCars = statisticsDao.findTopCars(fromInclusive, toExclusive, staffId, 8)
+        List<TopCarStatisticsItem> topCars = statisticsDao.findTopCars(fromInclusive, toExclusive, branchId, 8)
                 .stream()
                 .map(r -> new TopCarStatisticsItem(
                         String.valueOf(r[0]),

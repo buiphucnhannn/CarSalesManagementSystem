@@ -35,13 +35,12 @@ public class StatisticsController {
     }
 
     /**
-     * Lấy thống kê cho một nhân viên cụ thể.
-     * @param staffId ID của nhân viên.
+     * Lấy thống kê cho nhân viên đang đăng nhập (giới hạn theo chi nhánh hiện tại).
      * @param fromDate ngày bắt đầu.
      * @param toDate ngày kết thúc.
      * @return dữ liệu bảng điều khiển thống kê.
      */
-    public StatisticsDashboardData getStaffStatistics(Long staffId, LocalDate fromDate, LocalDate toDate) {
-        return statisticsService.getStaffStatistics(staffId, fromDate, toDate);
+    public StatisticsDashboardData getStaffStatistics(LocalDate fromDate, LocalDate toDate) {
+        return statisticsService.getStaffStatistics(fromDate, toDate);
     }
 }

@@ -72,8 +72,8 @@ public class StatisticsPanel extends JPanel {
 
     // Các panel biểu đồ tùy chỉnh.
     private final LineTrendChartPanel trendChart = new LineTrendChartPanel();
-    private final BarBreakdownChartPanel statusChart = new BarBreakdownChartPanel("Cơ cấu trạng thái đơn");
-    private final BarBreakdownChartPanel paymentChart = new BarBreakdownChartPanel("Cơ cấu phương thức thanh toán");
+    private final BarBreakdownChartPanel statusChart = new BarBreakdownChartPanel("Cơ cấu trạng thái đơn", "đơn");
+    private final BarBreakdownChartPanel paymentChart = new BarBreakdownChartPanel("Cơ cấu phương thức thanh toán", "lần thanh toán");
 
     // Model cho bảng "Top xe bán chạy".
     private final DefaultTableModel topCarModel = new DefaultTableModel(
@@ -346,7 +346,7 @@ public class StatisticsPanel extends JPanel {
             // Gọi phương thức controller tương ứng với vai trò (admin hoặc staff).
             StatisticsDashboardData data = (staffId == null)
                     ? controller.getAdminStatistics(from, to)
-                    : controller.getStaffStatistics(staffId, from, to);
+                    : controller.getStaffStatistics(from, to);
 
             // Cập nhật các thành phần giao diện với dữ liệu mới.
             bindKpi(data.kpi());
@@ -615,11 +615,13 @@ public class StatisticsPanel extends JPanel {
     private static final class BarBreakdownChartPanel extends JPanel {
         private final NumberFormat moneyFmt = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"));
         private final String title;
+        private final String countUnit;
         private List<StatisticsBreakdownItem> rows = List.of();
 
 
-        private BarBreakdownChartPanel(String title) {
+        private BarBreakdownChartPanel(String title, String countUnit) {
             this.title = title == null ? "" : title;
+            this.countUnit = (countUnit == null || countUnit.isBlank()) ? "đơn" : countUnit;
             setOpaque(true);
             setBackground(Color.WHITE);
             setPreferredSize(new Dimension(380, 220));
@@ -668,7 +670,19 @@ public class StatisticsPanel extends JPanel {
 
             int labelX = 12;
             int barX = 140;
-            int infoX = getWidth() - 190;
+            int maxInfoWidth = rows.stream()
+                    .map(row -> {
+                        double pct = totalCount == 0 ? 0d : (double) row.count() * 100d / totalCount;
+                        String info = String.format("%d %s (%.1f%%) | %s VND",
+                                row.count(),
+                                countUnit,
+                                pct,
+                                moneyFmt.format(row.amount() == null ? BigDecimal.ZERO : row.amount()));
+                        return g2.getFontMetrics().stringWidth(info);
+                    })
+                    .max(Integer::compareTo)
+                    .orElse(170);
+            int infoX = Math.max(barX + 84, getWidth() - maxInfoWidth - 12);
             int barMaxW = Math.max(60, infoX - barX - 12);
 
             g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -683,7 +697,11 @@ public class StatisticsPanel extends JPanel {
                 g2.fillRoundRect(barX, y, Math.max(2, barW), 18, 8, 8);
 
                 double pct = totalCount == 0 ? 0d : (double) row.count() * 100d / totalCount;
-                String info = String.format("%d đơn (%.1f%%) | %s VND", row.count(), pct, moneyFmt.format(row.amount() == null ? BigDecimal.ZERO : row.amount()));
+                String info = String.format("%d %s (%.1f%%) | %s VND",
+                        row.count(),
+                        countUnit,
+                        pct,
+                        moneyFmt.format(row.amount() == null ? BigDecimal.ZERO : row.amount()));
                 g2.setColor(UiPalette.TEXT_SECONDARY);
                 g2.drawString(info, infoX, y + 14);
                 y += 34;

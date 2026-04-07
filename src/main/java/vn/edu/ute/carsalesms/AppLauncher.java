@@ -115,7 +115,7 @@ public class AppLauncher {
                 buildInstallmentController(auditLogService, sessionContext, paymentValidationService, paymentInstallmentPlanService, paymentOrderFinalizationService, paymentRecordFactory),
                 buildInvoiceController(auditLogService),
                 buildPromotionController(auditLogService),
-                buildStatisticsController(),
+                buildStatisticsController(sessionContext),
                 new TestDriveServiceImpl(new TestDriveDaoImpl(), testDriveCustomerDao, testDriveCarDao, testDriveStaffDao, auditLogService),
                 new WarrantyServiceImpl(new WarrantyDaoImpl(), new SaleOrderDaoImpl(), auditLogService)
         );
@@ -208,8 +208,8 @@ public class AppLauncher {
         return new PromotionController(new PromotionServiceImpl(new PromotionDaoImpl()), auditLogService);
     }
 
-    private static StatisticsController buildStatisticsController() {
-        return new StatisticsController(new StatisticsServiceImpl(new StatisticsDaoImpl()));
+    private static StatisticsController buildStatisticsController(UserSessionContext sessionContext) {
+        return new StatisticsController(new StatisticsServiceImpl(new StatisticsDaoImpl(), sessionContext));
     }
 
     private static void showLoginFrame(ApplicationDependencies deps) {

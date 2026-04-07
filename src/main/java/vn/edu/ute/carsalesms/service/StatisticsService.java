@@ -8,6 +8,6 @@ public interface StatisticsService {
 
     StatisticsDashboardData getAdminStatistics(LocalDate fromDate, LocalDate toDate);
 
-    StatisticsDashboardData getStaffStatistics(Long staffId, LocalDate fromDate, LocalDate toDate);
+    StatisticsDashboardData getStaffStatistics(LocalDate fromDate, LocalDate toDate);
 }
 
